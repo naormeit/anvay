@@ -121,7 +121,7 @@ export function AssistantCard({
               setDraft(null);
               setError(null);
             }}
-            className="text-sm text-muted hover:text-foreground"
+            className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground"
           >
             Start over
           </button>
@@ -178,7 +178,7 @@ export function AssistantCard({
             <button
               key={ex}
               onClick={() => ask(ex)}
-              className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:text-foreground"
+              className="rounded-full border border-border px-3 py-2 text-sm text-muted hover:text-foreground"
               disabled={thinking}
             >
               {ex}

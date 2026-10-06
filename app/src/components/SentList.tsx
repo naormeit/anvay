@@ -99,7 +99,10 @@ export function SentList({ address, onChange }: { address: Address; onChange: ()
     <Card className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <p className="font-medium">Sent</p>
-        <button onClick={() => setVersion((v) => v + 1)} className="text-sm text-muted hover:text-foreground">
+        <button
+          onClick={() => setVersion((v) => v + 1)}
+          className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground"
+        >
           Refresh
         </button>
       </div>
@@ -124,7 +127,7 @@ export function SentList({ address, onChange }: { address: Address; onChange: ()
                     {label[state]}
                   </span>
                 </span>
-                <span className="text-xs text-muted">{new Date(link.createdAt).toLocaleDateString()}</span>
+                <span className="text-xs text-muted">{new Date(link.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
               </button>
               {isOpen && canAct && link.id && (
                 <div className="flex flex-col gap-2">

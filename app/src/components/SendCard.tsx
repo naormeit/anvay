@@ -75,7 +75,7 @@ export function SendCard({
                 type="button"
                 onClick={() => setCurrency(c)}
                 aria-pressed={currency === c}
-                className={`rounded-md px-3 py-1 ${currency === c ? "bg-accent text-accent-foreground" : "text-muted"}`}
+                className={`rounded-md px-3 py-2 ${currency === c ? "bg-accent text-accent-foreground" : "text-muted"}`}
                 disabled={busy}
               >
                 {c === "USD" ? "$ USD" : "₹ INR"}

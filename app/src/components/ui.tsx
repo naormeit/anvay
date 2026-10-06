@@ -19,7 +19,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )}
         </Link>
         {authenticated && (
-          <button onClick={logout} className="text-sm text-muted hover:text-foreground">
+          <button onClick={logout} className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground">
             Sign out
           </button>
         )}

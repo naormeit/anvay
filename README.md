@@ -1,137 +1,93 @@
-## Monad-flavored Foundry
+# Anvay
 
-> [!NOTE]
-> In this Foundry template, the default chain is `monadTestnet`. If you wish to change it, change the network in `foundry.toml`
+**Send dollars home with a link.** Type an amount, share the link on WhatsApp, and your family taps to collect it in seconds. No bank details, no app to install, and almost no fees.
 
-<h4 align="center">
-  <a href="https://docs.monad.xyz">Monad Documentation</a> | <a href="https://book.getfoundry.sh/">Foundry Documentation</a> |
-   <a href="https://github.com/monad-developers/foundry-monad/issues">Report Issue</a>
-</h4>
+Built on [Monad](https://monad.xyz) for the Metropolis hackathon (Track 2: Consumer Products & Payments).
 
+- **Live app:** _added after deployment_
+- **Network:** Monad testnet (chain 10143). The mainnet deploy uses Agora's AUSD stablecoin.
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## Why
 
-Foundry consists of:
+India receives more remittances than any other country. Sending money home today means bank forms, transfer fees, poor exchange rates and waits of hours or days. Anvay makes it as simple as sending a message:
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat, and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions, and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose Solidity REPL.
+1. **Sign in** with email or phone. Anvay creates an account in the background (a Privy embedded wallet). No seed phrases and no crypto words anywhere in the app.
+2. **Create a link** for any amount in dollars or rupees, or just type *"Send ₹5,000 to Mom"* or *"Papa ko 2 hazaar bhej do"*.
+3. **Share it** on WhatsApp. The recipient opens it, signs in with their phone or email, and taps **Collect**. They need no gas, no wallet and no app.
 
-## Documentation
+Unclaimed money can be cancelled and returned at any time.
 
-https://book.getfoundry.sh/
+## How it works
 
-## Usage
-
-### Build
-
-```shell
-forge build
+```
+ Sender's browser                         Monad                          Recipient's browser
+ ─────────────────                        ─────                          ───────────────────
+ 1. generate one-time link key  ──►  ClaimLinkEscrow.deposit(amount,      4. open link (key is in the
+ 2. approve + deposit AUSD           claimKey = address(linkKey), expiry)    #fragment, never sent to
+ 3. share  /claim#t=<id>&k=<key>                                              any server)
+                                                                           5. link key signs EIP-712
+                                     ClaimLinkEscrow.claim(id, recipient,     Claim(id, recipient)
+                                       sig)  ◄──  /api/claim relayer  ◄──  6. POST signature
+                                       pays gas, cannot change recipient
 ```
 
-### Test
+- **The link key never touches a server.** It lives in the URL fragment (after `#`), which browsers do not send in requests.
+- **The claim signature names the recipient**, so the relayer (or anyone who copies the transaction) cannot redirect the money. That lets the server pay gas for recipients who have none.
+- **Signatures are EIP-712**, bound to the chain and the escrow address, and each one covers a single transfer, so they cannot be replayed elsewhere.
+- **The relayer verifies signatures before spending gas**, serialises its transactions, and blocks duplicate in-flight claims.
 
-```shell
+### The AI assistant
+
+"Just say it" uses **Qwen** (`qwen/qwen3.8-27b`) with a single `draft_payment` tool. It understands English, Hindi, Hinglish and Devanagari, plus Indian number words (hazaar, lakh, crore). The model only drafts a payment. The user confirms every one, and the server enforces the rules:
+
+- currency conversion is done server-side with the live rate, never by the model
+- a draft is only accepted if the user actually wrote that currency (models sometimes guess)
+- amounts are capped, and malformed tool output becomes a clarifying question, never a draft
+
+## Contracts
+
+| Contract | Testnet address |
+| --- | --- |
+| `ClaimLinkEscrow` | [`0x607B0075fd9602820AA9Ef4395D7b32657a10cDa`](https://testnet.monadvision.com/address/0x607B0075fd9602820AA9Ef4395D7b32657a10cDa) |
+| `MockAUSD` (6 decimals, testnet only) | [`0x73E297c20cdee9291D09A66563C78939E5CA9aB5`](https://testnet.monadvision.com/address/0x73E297c20cdee9291D09A66563C78939E5CA9aB5) |
+
+On mainnet (chain 143) the escrow uses Agora's AUSD at `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`. [`script/DeployEscrow.s.sol`](script/DeployEscrow.s.sol) picks the right token for the chain.
+
+## Repository
+
+```
+src/ClaimLinkEscrow.sol      escrow: deposit, claim (EIP-712), cancel
+src/MockAUSD.sol             testnet stand-in for AUSD
+test/ClaimLinkEscrow.t.sol   26 Foundry tests incl. front-running, replay, malleability, fuzz
+script/                      deploy script and an anvil-fork end-to-end check
+app/                         Next.js app (Privy login, send, claim, relayer, assistant)
+app/scripts/                 API tests against a local fork and a fake/real Qwen
+```
+
+## Run it locally
+
+Requirements: [Foundry](https://getfoundry.sh) 1.8+, Node 20+.
+
+```bash
+# contracts
 forge test
+
+# app
+cd app
+cp .env.example .env.local   # fill in the values described in the file
+npm install
+npm run dev                  # http://localhost:3000
 ```
 
-### Format
+`.env.local` needs a Privy App ID, a funded testnet relayer key, and (optionally) a Qwen key from any OpenAI-compatible host. Groq's free tier works. Without a Qwen key the assistant is hidden and everything else works.
 
-```shell
-forge fmt
-```
+## Tech
 
-### Gas Snapshots
+Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Next.js · viem · Privy embedded wallets · Qwen (via Groq)
 
-```shell
-forge snapshot
-```
+## Limitations and next steps
 
-### Anvil
-
-```shell
-anvil
-```
-
-### Deploy to Monad Testnet
-
-First, you need to create a keystore file. Do not forget to remember the password! You will need it to deploy your contract.
-
-```shell
-cast wallet import monad-deployer --private-key $(cast wallet new | grep 'Private key:' | awk '{print $3}')
-```
-
-After creating the keystore, you can read its address using:
-
-```shell
-cast wallet address --account monad-deployer
-```
-
-The command above will create a keystore file named `monad-deployer` in the `~/.foundry/keystores` directory.
-
-Then, you can deploy your contract to the Monad Testnet using the keystore file you created.
-
-```shell
-forge create src/Counter.sol:Counter --account monad-deployer --broadcast
-```
-
-### Verify Contract
-
-```shell
-forge verify-contract \
-  <contract_address> \
-  src/Counter.sol:Counter \
-  --chain 10143 \
-  --verifier sourcify \
-  --verifier-url https://sourcify-api-monad.blockvision.org
-```
-
-### Cast
-[Cast reference](https://book.getfoundry.sh/cast/)
-```shell
-cast <subcommand>
-```
-
-### Help
-
-```shell
-forge --help
-anvil --help
-cast --help
-```
-
-
-## FAQ
-
-### Error: `Error: server returned an error response: error code -32603: Signer had insufficient balance`
-
-This error happens when you don't have enough balance to deploy your contract. You can check your balance with the following command:
-
-```shell
-cast wallet address --account monad-deployer
-```
-
-### I have constructor arguments, how do I deploy my contract?
-
-```shell
-forge create \
-  src/Counter.sol:Counter \
-  --account monad-deployer \
-  --broadcast \
-  --constructor-args <constructor_arguments>
-```
-
-### I have constructor arguments, how do I verify my contract?
-
-```shell
-forge verify-contract \
-  <contract_address> \
-  src/Counter.sol:Counter \
-  --chain 10143 \
-  --verifier sourcify \
-  --verifier-url https://sourcify-api-monad.blockvision.org \
-  --constructor-args <abi_encoded_constructor_arguments>
-```
-
-Please refer to the [Foundry Book](https://book.getfoundry.sh/) for more information.
+- **Cashing out to a bank account in rupees** needs a licensed off-ramp partner. Today the recipient holds dollars (AUSD) in Anvay. Rupee amounts are shown as estimates at the live rate.
+- **Sender gas:** on testnet a faucet tops up new users. On mainnet the plan is Privy's native gas sponsorship.
+- **Sent links** are stored on the sender's device, so they can re-share or cancel. Moving them to an account-backed store is next.
+- Rate limits and the relayer's nonce lock are in-memory. This is fine for a single instance, and a shared store comes before scaling out.
