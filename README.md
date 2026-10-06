@@ -4,7 +4,7 @@
 
 Built on [Monad](https://monad.xyz) for the Metropolis hackathon (Track 2: Consumer Products & Payments).
 
-- **Live app:** _added after deployment_
+- **Live app:** https://anvay-pay.vercel.app (testnet; use "Add $100 test dollars" to try it)
 - **Network:** Monad testnet (chain 10143). The mainnet deploy uses Agora's AUSD stablecoin.
 
 ## Why
