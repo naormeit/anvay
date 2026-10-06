@@ -5,7 +5,7 @@
 Built on [Monad](https://monad.xyz) for the Metropolis hackathon (Track 2: Consumer Products & Payments).
 
 - **Live app:** https://anvay-pay.vercel.app (testnet; use "Add $100 test dollars" to try it)
-- **Network:** Monad testnet (chain 10143). The mainnet deploy uses Agora's AUSD stablecoin.
+- **Network:** Monad testnet (chain 10143). The same contracts are tested against Agora's real AUSD on a mainnet fork (see [Mainnet readiness](#mainnet-readiness)).
 
 ## Why
 
@@ -46,6 +46,8 @@ Unclaimed money can be cancelled and returned at any time.
 
 ## Contracts
 
+Both contracts are source-verified on MonadVision (Sourcify).
+
 | Contract | Testnet address |
 | --- | --- |
 | `ClaimLinkEscrow` | [`0x607B0075fd9602820AA9Ef4395D7b32657a10cDa`](https://testnet.monadvision.com/address/0x607B0075fd9602820AA9Ef4395D7b32657a10cDa) |
@@ -53,13 +55,21 @@ Unclaimed money can be cancelled and returned at any time.
 
 On mainnet (chain 143) the escrow uses Agora's AUSD at `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`. [`script/DeployEscrow.s.sol`](script/DeployEscrow.s.sol) picks the right token for the chain.
 
+## Mainnet readiness
+
+The live app runs on testnet, so anyone can try it for free. Mainnet support is tested without spending real funds:
+
+- [`script/e2e-mainnet-fork.sh`](script/e2e-mainnet-fork.sh) forks Monad mainnet locally and deploys `ClaimLinkEscrow` against **Agora's real AUSD contract**. It borrows 100 AUSD from an existing holder (possible only on the local fork), then runs deposit, a relayed claim to a recipient with 0 MON, a blocked redirect attempt, and a cancel. Every step passes and the escrow ends empty.
+- `DeployEscrow.s.sol` dry-runs cleanly against mainnet and selects real AUSD.
+- Switching the app is configuration only: `NEXT_PUBLIC_NETWORK=mainnet` plus the mainnet escrow and AUSD addresses. On mainnet the test-dollar faucet is disabled automatically.
+
 ## Repository
 
 ```
 src/ClaimLinkEscrow.sol      escrow: deposit, claim (EIP-712), cancel
 src/MockAUSD.sol             testnet stand-in for AUSD
 test/ClaimLinkEscrow.t.sol   26 Foundry tests incl. front-running, replay, malleability, fuzz
-script/                      deploy script and an anvil-fork end-to-end check
+script/                      deploy script, testnet-fork and mainnet-fork (real AUSD) end-to-end checks
 app/                         Next.js app (Privy login, send, claim, relayer, assistant)
 app/scripts/                 API tests against a local fork and a fake/real Qwen
 ```
