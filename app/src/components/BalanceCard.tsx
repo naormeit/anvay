@@ -3,16 +3,18 @@
 import { useState } from "react";
 import type { Address } from "viem";
 import { isMainnet } from "@/lib/config";
-import { formatUsd } from "@/lib/format";
+import { formatInr, formatUsd } from "@/lib/format";
 import { Button, Card, Notice } from "./ui";
 
 export function BalanceCard({
   address,
   balance,
+  inrPerUsd,
   onChange,
 }: {
   address: Address;
   balance: bigint | null;
+  inrPerUsd: number | null;
   onChange: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -41,6 +43,9 @@ export function BalanceCard({
     <Card>
       <p className="text-sm text-muted">Your balance</p>
       <p className="mt-1 text-4xl font-semibold tracking-tight">{balance === null ? "…" : formatUsd(balance)}</p>
+      {balance !== null && inrPerUsd && (
+        <p className="text-sm text-muted">About {formatInr(balance, inrPerUsd)}</p>
+      )}
       {!isMainnet && (
         <div className="mt-4 flex flex-col gap-2">
           <Button variant="secondary" onClick={getTestDollars} disabled={busy}>

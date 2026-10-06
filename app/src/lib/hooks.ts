@@ -34,6 +34,25 @@ export function useDollarBalance(address: Address | undefined) {
   return { balance, refresh };
 }
 
+let ratePromise: Promise<number | null> | null = null;
+
+/** Today's rupees-per-dollar rate, fetched once per page load. Null while loading or if unavailable. */
+export function useInrRate() {
+  const [rate, setRate] = useState<number | null>(null);
+  useEffect(() => {
+    ratePromise ??= fetch("/api/rate")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { inrPerUsd?: number } | null) => d?.inrPerUsd ?? null)
+      .catch(() => null);
+    let cancelled = false;
+    ratePromise.then((r) => !cancelled && setRate(r));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return rate;
+}
+
 function subscribeToHash(callback: () => void) {
   window.addEventListener("hashchange", callback);
   return () => window.removeEventListener("hashchange", callback);

@@ -41,3 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 !.env.example
+
+# test script output
+/scripts/*.log
+/scripts/last_request.json

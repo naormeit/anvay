@@ -8,8 +8,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { parseClaimFragment, signClaim } from "@/lib/claimLink";
 import { ESCROW_ADDRESS, explorerTx, publicClient } from "@/lib/config";
 import { escrowAbi, toTransfer, TransferStatus, type OnchainTransfer } from "@/lib/contracts";
-import { formatUsd } from "@/lib/format";
-import { useEmbeddedWallet, useLocationHash } from "@/lib/hooks";
+import { formatInr, formatUsd } from "@/lib/format";
+import { useEmbeddedWallet, useInrRate, useLocationHash } from "@/lib/hooks";
 import { Button, Card, Notice, Shell } from "@/components/ui";
 
 type Loaded = { transfer: OnchainTransfer; keyMatches: boolean; expired: boolean } | { error: string };
@@ -19,6 +19,7 @@ export default function ClaimPage() {
   const link = useMemo(() => parseClaimFragment(hash), [hash]);
   const { ready, authenticated, login } = usePrivy();
   const { address } = useEmbeddedWallet();
+  const inrPerUsd = useInrRate();
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [claiming, setClaiming] = useState(false);
@@ -126,7 +127,10 @@ export default function ClaimPage() {
     <Shell>
       <Card className="flex flex-col gap-4 text-center">
         <p className="text-sm text-muted">Someone sent you</p>
-        <p className="text-5xl font-semibold tracking-tight">{formatUsd(transfer.amount)}</p>
+        <div>
+          <p className="text-5xl font-semibold tracking-tight">{formatUsd(transfer.amount)}</p>
+          {inrPerUsd && <p className="mt-1 text-muted">About {formatInr(transfer.amount, inrPerUsd)}</p>}
+        </div>
         {problem ? (
           <Notice tone="danger">{problem}</Notice>
         ) : !ready ? (

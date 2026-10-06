@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
+import { AssistantCard } from "@/components/AssistantCard";
 import { BalanceCard } from "@/components/BalanceCard";
 import { SendCard } from "@/components/SendCard";
 import { SentList } from "@/components/SentList";
 import { Button, Card, Notice, Shell } from "@/components/ui";
-import { useDollarBalance, useEmbeddedWallet } from "@/lib/hooks";
+import { useDollarBalance, useEmbeddedWallet, useInrRate } from "@/lib/hooks";
 
 export default function Home() {
   const { ready, authenticated, login } = usePrivy();
   const { address } = useEmbeddedWallet();
   const { balance, refresh } = useDollarBalance(address);
   const [sentCount, setSentCount] = useState(0);
+  const inrPerUsd = useInrRate();
 
   if (!ready) {
     return (
@@ -63,10 +65,20 @@ export default function Home() {
 
   return (
     <Shell>
-      <BalanceCard address={address} balance={balance} onChange={refresh} />
+      <BalanceCard address={address} balance={balance} inrPerUsd={inrPerUsd} onChange={refresh} />
+      <AssistantCard
+        address={address}
+        balance={balance}
+        inrPerUsd={inrPerUsd}
+        onSent={() => {
+          refresh();
+          setSentCount((c) => c + 1);
+        }}
+      />
       <SendCard
         address={address}
         balance={balance}
+        inrPerUsd={inrPerUsd}
         onSent={() => {
           refresh();
           setSentCount((c) => c + 1);
