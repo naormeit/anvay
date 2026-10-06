@@ -2,12 +2,18 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-metadata = true
-metadata_hash = "none"  # disable ipfs
+ignored_warnings_from = ["lib"]
+cbor_metadata = true
+bytecode_hash = "none"  # disable ipfs hash in bytecode
 use_literal_content = true # use source code
 
 # Monad Configuration
-eth-rpc-url="https://testnet-rpc.monad.xyz"
-chain_id = 10143
+network = "monad"
+# No default RPC here, so `forge test` runs locally instead of forking testnet.
+# Pass --rpc-url monad_testnet (or monad_mainnet) when deploying.
+
+[rpc_endpoints]
+monad_testnet = "https://testnet-rpc.monad.xyz"
+monad_mainnet = "https://rpc.monad.xyz"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
