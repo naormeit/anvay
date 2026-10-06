@@ -1,6 +1,7 @@
 "use client";
 
 import { PrivyProvider } from "@privy-io/react-auth";
+import { AccountProvider } from "@/lib/account";
 import { chain } from "@/lib/config";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         supportedChains: [chain],
       }}
     >
-      {children}
+      <AccountProvider>{children}</AccountProvider>
     </PrivyProvider>
   );
 }

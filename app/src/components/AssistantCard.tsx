@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Address } from "viem";
 import { formatInr, formatUsd } from "@/lib/format";
 import { useCreateLink, type CreatedLink } from "@/lib/useCreateLink";
 import { LinkReady } from "./LinkReady";
@@ -21,12 +20,10 @@ function describe(draft: Draft) {
 }
 
 export function AssistantCard({
-  address,
   balance,
   inrPerUsd,
   onSent,
 }: {
-  address: Address;
   balance: bigint | null;
   inrPerUsd: number | null;
   onSent: () => void;
@@ -38,7 +35,7 @@ export function AssistantCard({
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedLink | null>(null);
-  const { createLink, step, busy } = useCreateLink(address);
+  const { createLink, step, busy } = useCreateLink();
 
   useEffect(() => {
     let cancelled = false;

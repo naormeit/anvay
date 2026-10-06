@@ -4,6 +4,7 @@ export const escrowAbi = parseAbi([
   "function deposit(uint96 amount, address claimKey, uint64 expiresAt) returns (uint256 id)",
   "function claim(uint256 id, address recipient, bytes signature)",
   "function cancel(uint256 id)",
+  "function transferCount() view returns (uint256)",
   "function transfers(uint256 id) view returns (address sender, uint64 expiresAt, uint8 status, address claimKey, uint96 amount)",
   "event Deposited(uint256 indexed id, address indexed sender, address indexed claimKey, uint96 amount, uint64 expiresAt)",
   "error ZeroAmount()",

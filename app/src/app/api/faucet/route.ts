@@ -7,6 +7,7 @@ const TEST_DOLLARS = parseUnits("100", AUSD_DECIMALS);
 const GAS_TOP_UP = parseEther("0.1");
 const MIN_GAS_BALANCE = parseEther("0.05");
 const COOLDOWN_MS = 10 * 60 * 1000;
+const FRESH_FUNDS_DELAY_MS = 1500;
 
 const lastDrip = new Map<string, number>();
 
@@ -42,6 +43,8 @@ export async function POST(request: Request) {
       if (gas < MIN_GAS_BALANCE) {
         const topUp = await wallet.sendTransaction({ to: address as Address, value: GAS_TOP_UP });
         await publicClient.waitForTransactionReceipt({ hash: topUp });
+        // Monad checks gas against state from 3 blocks back, so freshly received MON is usable ~1.2s later.
+        await new Promise((r) => setTimeout(r, FRESH_FUNDS_DELAY_MS));
       }
     });
     return Response.json({ ok: true });

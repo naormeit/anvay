@@ -11,7 +11,7 @@ Built on [Monad](https://monad.xyz) for the Metropolis hackathon (Track 2: Consu
 
 India receives more remittances than any other country. Sending money home today means bank forms, transfer fees, poor exchange rates and waits of hours or days. Anvay makes it as simple as sending a message:
 
-1. **Sign in** with email or phone. Anvay creates an account in the background (a Privy embedded wallet). No seed phrases and no crypto words anywhere in the app.
+1. **Sign in** with a passkey (fingerprint, face or screen lock) or with email/phone. Anvay creates the account in the background. No seed phrases and no crypto words anywhere in the app.
 2. **Create a link** for any amount in dollars or rupees, or just type *"Send ₹5,000 to Mom"* or *"Papa ko 2 hazaar bhej do"*.
 3. **Share it** on WhatsApp. The recipient opens it, signs in with their phone or email, and taps **Collect**. They need no gas, no wallet and no app.
 
@@ -35,6 +35,22 @@ Unclaimed money can be cancelled and returned at any time.
 - **The claim signature names the recipient**, so the relayer (or anyone who copies the transaction) cannot redirect the money. That lets the server pay gas for recipients who have none.
 - **Signatures are EIP-712**, bound to the chain and the escrow address, and each one covers a single transfer, so they cannot be replayed elsewhere.
 - **The relayer verifies signatures before spending gas**, serialises its transactions, and blocks duplicate in-flight claims.
+
+### Passkey accounts: one passkey, many keys (Mera)
+
+Passkey sign-in uses [Mera](https://mera.category.xyz). A passkey ceremony returns 32 secret bytes (the WebAuthn PRF output), and Anvay turns them into three unrelated keys. None of them is ever stored ([`app/src/lib/meraKeys.ts`](app/src/lib/meraKeys.ts)):
+
+| Key | Derivation | Used for |
+| --- | --- | --- |
+| Account key | Mera's standard path (BIP-39 entropy, then BIP-32 `m/44'/60'/0'/0/0`) | Signing transactions through a Mera signing session and viem |
+| Claim-link root | HKDF(prf, `anvay.v1.claim-links`); each link = HKDF(root, `link/<deposit nonce>`) | Every payment link's secret key |
+| Notes key | HKDF(prf, `anvay.v1.notes`) as AES-256-GCM | Sealing the private "who is it for" notes kept on the device |
+
+Because each link key comes from the passkey and the deposit's nonce, **a lost phone loses nothing**. Sign in with the same passkey on any device, and Anvay finds your transfers on-chain, re-derives every link key, and matches it to the transfer's claim address. Unclaimed links can be shared again or cancelled. Notes stay readable only to that passkey.
+
+Passkeys sync through iCloud Keychain and Google Password Manager, so the same account opens on the user's other devices. Email/phone sign-in (Privy) remains available for devices whose passkeys don't support PRF yet.
+
+Tests: [`app/scripts/mera-keys.test.mts`](app/scripts/mera-keys.test.mts) checks the derivation, including that Mera and viem agree on the account address. [`app/scripts/passkey-flow.mjs`](app/scripts/passkey-flow.mjs) drives Chrome with a virtual PRF authenticator through sign-up, faucet, sending, reload and recovery, and a second account collecting.
 
 ### The AI assistant
 
@@ -93,11 +109,11 @@ npm run dev                  # http://localhost:3000
 
 ## Tech
 
-Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Next.js · viem · Privy embedded wallets · Qwen (via Groq)
+Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Next.js · viem · Mera passkeys · Privy embedded wallets · Qwen (via Groq)
 
 ## Limitations and next steps
 
 - **Cashing out to a bank account in rupees** needs a licensed off-ramp partner. Today the recipient holds dollars (AUSD) in Anvay. Rupee amounts are shown as estimates at the live rate.
 - **Sender gas:** on testnet a faucet tops up new users. On mainnet the plan is Privy's native gas sponsorship.
-- **Sent links** are stored on the sender's device, so they can re-share or cancel. Moving them to an account-backed store is next.
+- **Sent links:** passkey accounts rebuild them from the passkey on any device. Email/phone accounts still keep them on the device that created them.
 - Rate limits and the relayer's nonce lock are in-memory. This is fine for a single instance, and a shared store comes before scaling out.

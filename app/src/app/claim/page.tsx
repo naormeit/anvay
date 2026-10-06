@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePrivy } from "@privy-io/react-auth";
 import { isAddressEqual } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { parseClaimFragment, signClaim } from "@/lib/claimLink";
 import { ESCROW_ADDRESS, explorerTx, publicClient } from "@/lib/config";
 import { escrowAbi, toTransfer, TransferStatus, type OnchainTransfer } from "@/lib/contracts";
 import { formatInr, formatUsd } from "@/lib/format";
-import { useEmbeddedWallet, useInrRate, useLocationHash } from "@/lib/hooks";
+import { useAccount } from "@/lib/account";
+import { useInrRate, useLocationHash } from "@/lib/hooks";
+import { SignIn } from "@/components/SignIn";
 import { Button, Card, Notice, Shell } from "@/components/ui";
 
 type Loaded = { transfer: OnchainTransfer; keyMatches: boolean; expired: boolean } | { error: string };
@@ -17,8 +18,8 @@ type Loaded = { transfer: OnchainTransfer; keyMatches: boolean; expired: boolean
 export default function ClaimPage() {
   const hash = useLocationHash();
   const link = useMemo(() => parseClaimFragment(hash), [hash]);
-  const { ready, authenticated, login } = usePrivy();
-  const { address } = useEmbeddedWallet();
+  const { ready, account, settingUp } = useAccount();
+  const address = account?.address;
   const inrPerUsd = useInrRate();
 
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -135,13 +136,13 @@ export default function ClaimPage() {
           <Notice tone="danger">{problem}</Notice>
         ) : !ready ? (
           <Notice>Loading…</Notice>
-        ) : !authenticated ? (
-          <>
-            <Button onClick={login}>Sign in with email or phone to collect</Button>
-            <Notice>New here? Signing in creates your Anvay account. Nothing to install.</Notice>
-          </>
-        ) : !address ? (
+        ) : settingUp ? (
           <Notice>Setting up your account…</Notice>
+        ) : !address ? (
+          <div className="flex flex-col gap-3 text-left">
+            <Notice>Sign in to collect it. New here? This creates your Anvay account. Nothing to install.</Notice>
+            <SignIn emailLabel="Use email or phone instead" />
+          </div>
         ) : (
           <Button onClick={claim} disabled={claiming}>
             {claiming ? "Collecting…" : `Collect ${formatUsd(transfer.amount)}`}

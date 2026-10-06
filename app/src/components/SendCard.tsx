@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { Address } from "viem";
 import { formatInr, formatUsd, inrToUsdUnits, parseInr, parseUsd } from "@/lib/format";
 import { useCreateLink, type CreatedLink } from "@/lib/useCreateLink";
 import { LinkReady } from "./LinkReady";
@@ -19,12 +18,10 @@ function toUnits(input: string, currency: Currency, inrPerUsd: number | null): b
 }
 
 export function SendCard({
-  address,
   balance,
   inrPerUsd,
   onSent,
 }: {
-  address: Address;
   balance: bigint | null;
   inrPerUsd: number | null;
   onSent: () => void;
@@ -34,7 +31,7 @@ export function SendCard({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedLink | null>(null);
-  const { createLink, step, busy } = useCreateLink(address);
+  const { createLink, step, busy } = useCreateLink();
 
   const units = toUnits(amountInput, currency, inrPerUsd);
   const equivalent =

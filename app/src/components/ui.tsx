@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAccount } from "@/lib/account";
 import { isMainnet } from "@/lib/config";
 
 export function Shell({ children }: { children: React.ReactNode }) {
-  const { authenticated, logout } = usePrivy();
+  const { account, settingUp, signOut } = useAccount();
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pb-10">
       <header className="flex items-center justify-between py-5">
@@ -18,8 +18,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </span>
           )}
         </Link>
-        {authenticated && (
-          <button onClick={logout} className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground">
+        {(account || settingUp) && (
+          <button onClick={signOut} className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground">
             Sign out
           </button>
         )}

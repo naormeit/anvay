@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { encodeFunctionData, parseEventLogs, type Address } from "viem";
+import { encodeFunctionData } from "viem";
+import { useAccount } from "@/lib/account";
 import { buildClaimUrl } from "@/lib/claimLink";
 import { ESCROW_ADDRESS, publicClient } from "@/lib/config";
 import { escrowAbi, toTransfer, TransferStatus } from "@/lib/contracts";
 import { formatUsd } from "@/lib/format";
-import { loadSentLinks, saveSentLink, type SentLink } from "@/lib/sentLinks";
+import { loadMyLinks, type MyLink } from "@/lib/myLinks";
 import { useSendTx } from "@/lib/useSendTx";
 import { Button, Card, Notice } from "./ui";
 import { ShareLink } from "./ShareLink";
@@ -20,18 +21,6 @@ const label: Record<LinkState, string> = {
   expired: "Expired, cancel to get it back",
   unknown: "Checking…",
 };
-
-/** Resolve the transfer id for a link whose deposit was sent but not yet recorded (e.g. page closed mid-send). */
-async function resolveId(owner: Address, link: SentLink): Promise<SentLink> {
-  if (link.id) return link;
-  const receipt = await publicClient.getTransactionReceipt({ hash: link.depositHash }).catch(() => null);
-  if (!receipt || receipt.status !== "success") return link;
-  const [deposited] = parseEventLogs({ abi: escrowAbi, eventName: "Deposited", logs: receipt.logs });
-  if (!deposited) return link;
-  const resolved = { ...link, id: deposited.args.id.toString() };
-  saveSentLink(owner, resolved);
-  return resolved;
-}
 
 async function readState(id: string): Promise<LinkState> {
   const t = toTransfer(
@@ -48,40 +37,50 @@ async function readState(id: string): Promise<LinkState> {
   return "waiting";
 }
 
-/** Rendered only after sign-in, so it never runs during server rendering and can read localStorage directly. */
-export function SentList({ address, onChange }: { address: Address; onChange: () => void }) {
-  const [links, setLinks] = useState<SentLink[]>(() => loadSentLinks(address));
+/** Rendered only after sign-in, so it never runs during server rendering. */
+export function SentList({ onChange }: { onChange: () => void }) {
+  const { account } = useAccount();
+  const [links, setLinks] = useState<MyLink[]>([]);
   const [states, setStates] = useState<Record<string, LinkState>>({});
   const [version, setVersion] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { submit, confirm } = useSendTx(address);
+  const { submit, confirm } = useSendTx();
 
   useEffect(() => {
+    if (!account) return;
     let cancelled = false;
     (async () => {
-      const resolved = await Promise.all(loadSentLinks(address).map((l) => resolveId(address, l)));
+      const loaded = await loadMyLinks(account).catch((err) => {
+        console.error("loading links failed", err);
+        return [] as MyLink[];
+      });
       const entries = await Promise.all(
-        resolved.map(async (l) => [l.depositHash, l.id ? await readState(l.id).catch(() => "unknown" as const) : "unknown"] as const),
+        loaded.map(
+          async (l) => [l.uid, l.id ? await readState(l.id).catch(() => "unknown" as const) : "unknown"] as const,
+        ),
       );
       if (!cancelled) {
-        setLinks(resolved);
+        setLinks(loaded);
         setStates(Object.fromEntries(entries));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [address, version]);
+  }, [account, version]);
 
-  async function cancel(link: SentLink) {
+  async function cancel(link: MyLink) {
     if (!link.id) return;
-    setCancelling(link.depositHash);
+    setCancelling(link.uid);
     setError(null);
     try {
       await confirm(
-        await submit(ESCROW_ADDRESS, encodeFunctionData({ abi: escrowAbi, functionName: "cancel", args: [BigInt(link.id)] })),
+        await submit(
+          ESCROW_ADDRESS,
+          encodeFunctionData({ abi: escrowAbi, functionName: "cancel", args: [BigInt(link.id)] }),
+        ),
       );
       setVersion((v) => v + 1);
       onChange();
@@ -94,6 +93,7 @@ export function SentList({ address, onChange }: { address: Address; onChange: ()
   }
 
   if (links.length === 0) return null;
+  const anyRecovered = links.some((l) => l.recovered);
 
   return (
     <Card className="flex flex-col gap-3">
@@ -106,17 +106,20 @@ export function SentList({ address, onChange }: { address: Address; onChange: ()
           Refresh
         </button>
       </div>
+      {anyRecovered && (
+        <Notice>Restored with your passkey. Your links work on any device where you sign in with it.</Notice>
+      )}
       {error && <Notice tone="danger">{error}</Notice>}
       <ul className="flex flex-col divide-y divide-border">
         {links.map((link) => {
-          const state = states[link.depositHash] ?? "unknown";
+          const state = states[link.uid] ?? "unknown";
           const canAct = link.id && (state === "waiting" || state === "expired");
-          const isOpen = open === link.depositHash;
+          const isOpen = open === link.uid;
           return (
-            <li key={link.depositHash} className="flex flex-col gap-3 py-3">
+            <li key={link.uid} className="flex flex-col gap-3 py-3">
               <button
                 className="flex items-center justify-between text-left"
-                onClick={() => setOpen(isOpen ? null : link.depositHash)}
+                onClick={() => setOpen(isOpen ? null : link.uid)}
               >
                 <span>
                   <span className="block font-medium">
@@ -127,18 +130,20 @@ export function SentList({ address, onChange }: { address: Address; onChange: ()
                     {label[state]}
                   </span>
                 </span>
-                <span className="text-xs text-muted">{new Date(link.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                <span className="text-xs text-muted">
+                  {new Date(link.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                </span>
               </button>
               {isOpen && canAct && link.id && (
                 <div className="flex flex-col gap-2">
-                  {state === "waiting" && (
+                  {state === "waiting" && link.key && (
                     <ShareLink
                       url={buildClaimUrl(window.location.origin, BigInt(link.id), link.key)}
                       amount={BigInt(link.amount)}
                     />
                   )}
                   <Button variant="danger" onClick={() => cancel(link)} disabled={cancelling !== null}>
-                    {cancelling === link.depositHash ? "Cancelling…" : "Cancel and get money back"}
+                    {cancelling === link.uid ? "Cancelling…" : "Cancel and get money back"}
                   </Button>
                 </div>
               )}
