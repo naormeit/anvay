@@ -5,7 +5,7 @@ import { useAccount } from "@/lib/account";
 import { Button, Notice } from "./ui";
 
 /** Email/phone (Privy) or passkey (Mera) sign-in. */
-export function SignIn({ emailLabel = "Continue with email or phone" }: { emailLabel?: string }) {
+export function SignIn({ emailLabel = "Continue with Google or email" }: { emailLabel?: string }) {
   const { loginWithEmail, loginWithPasskey, hasUsedPasskey } = useAccount();
   const [busy, setBusy] = useState<"create" | "signin" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export function SignIn({ emailLabel = "Continue with email or phone" }: { emailL
       {error && <Notice tone="danger">{error}</Notice>}
       <p className="text-xs text-muted">
         A passkey is your fingerprint, face or screen lock. Nothing to remember, and it works on your other devices
-        too.
+        too. Phone number sign-in works for US and Canadian numbers only; in India, use a passkey, Google or email.
       </p>
     </div>
   );

@@ -141,7 +141,7 @@ export default function ClaimPage() {
         ) : !address ? (
           <div className="flex flex-col gap-3 text-left">
             <Notice>Sign in to collect it. New here? This creates your Anvay account. Nothing to install.</Notice>
-            <SignIn emailLabel="Use email or phone instead" />
+            <SignIn emailLabel="Use Google or email instead" />
           </div>
         ) : (
           <Button onClick={claim} disabled={claiming}>

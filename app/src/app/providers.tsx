@@ -18,7 +18,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <PrivyProvider
       appId={appId}
       config={{
-        loginMethods: ["email", "sms"],
+        // Privy's free plan sends SMS codes to US and Canadian numbers only, so people in India use Google, email or a
+        // passkey.
+        loginMethods: ["google", "email", "sms"],
         appearance: { accentColor: "#c2410c", landingHeader: "Sign in to Anvay" },
         embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" }, showWalletUIs: false },
         defaultChain: chain,
