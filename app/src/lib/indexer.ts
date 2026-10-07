@@ -90,15 +90,25 @@ export async function indexerStats(): Promise<IndexedStats> {
   };
 }
 
-/** Every transfer an address has sent, newest first. Used to rebuild a passkey account's links. */
-export async function indexerTransfersBySender(sender: string): Promise<IndexedTransfer[]> {
-  const data = await gql<{ Transfer: IndexedTransfer[] }>(
+/**
+ * Every transfer an address has sent, newest first, plus the highest transfer id the indexer has seen overall.
+ * Callers read anything newer than `latestIndexedId` from the chain, since the indexer can lag by a few seconds.
+ */
+export async function indexerTransfersBySender(
+  sender: string,
+): Promise<{ transfers: IndexedTransfer[]; latestIndexedId: bigint }> {
+  const data = await gql<{ mine: IndexedTransfer[]; stats: { links: number }[] }>(
     `query BySender($sender: String!) {
-      Transfer(where: { sender: { _eq: $sender } }, order_by: { createdAt: desc }) {
+      mine: Transfer(where: { sender: { _eq: $sender } }, order_by: { createdAt: desc }) {
         id sender claimKey amount expiresAt status createdAt
       }
+      stats: Stats(where: { id: { _eq: "global" } }) { links }
     }`,
     { sender: sender.toLowerCase() },
   );
-  return data.Transfer.map((t) => ({ ...t, amount: String(t.amount), expiresAt: String(t.expiresAt) }));
+  return {
+    transfers: data.mine.map((t) => ({ ...t, amount: String(t.amount), expiresAt: String(t.expiresAt) })),
+    // Escrow ids count up from 1, so the number of indexed deposits is the highest indexed id.
+    latestIndexedId: BigInt(data.stats[0]?.links ?? 0),
+  };
 }

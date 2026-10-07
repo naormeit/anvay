@@ -80,7 +80,7 @@ cre workflow simulate inr-rate --target staging-settings --broadcast
 - `Stats`: global links, collected, volume, unique senders and recipients
 - `RateUpdate`: every rate the Chainlink workflow wrote
 
-The app uses it for the public [/stats](https://anvay-pay.vercel.app/stats) page and to find a passkey account's transfers quickly when rebuilding its links. Both fall back to reading the contract directly when `NEXT_PUBLIC_ENVIO_GRAPHQL_URL` isn't set.
+The hosted indexer ([GraphQL](https://indexer.dev.hyperindex.xyz/2a6b003/v1/graphql)) powers the public [/stats](https://anvay-pay.vercel.app/stats) page and to find a passkey account's transfers quickly when rebuilding its links. Both fall back to reading the contract directly when `NEXT_PUBLIC_ENVIO_GRAPHQL_URL` isn't set.
 
 ```bash
 cd indexer && npm install && npm test   # Envio runs on Linux/macOS (WSL on Windows); tests replay real HyperSync data

@@ -52,10 +52,11 @@ export async function saveSealedNote(owner: string, notesKey: CryptoKey, nonce: 
 
 /** This account's transfers: from the Envio indexer when configured, otherwise by scanning the escrow. */
 async function loadMyTransfers(address: Address): Promise<(OnchainTransfer & { id: bigint })[]> {
+  const isMine = (t: { sender: string }) => t.sender.toLowerCase() === address.toLowerCase();
   if (indexerUrl) {
     try {
-      const rows = await indexerTransfersBySender(address);
-      return rows.map((r) => ({
+      const { transfers, latestIndexedId } = await indexerTransfersBySender(address);
+      const indexed = transfers.map((r) => ({
         id: BigInt(r.id),
         sender: r.sender as Address,
         claimKey: r.claimKey as Address,
@@ -63,18 +64,23 @@ async function loadMyTransfers(address: Address): Promise<(OnchainTransfer & { i
         expiresAt: BigInt(r.expiresAt),
         status: r.status === "claimed" ? 2 : r.status === "cancelled" ? 3 : 1,
       }));
+      // The indexer can be a few seconds behind; read only the not-yet-indexed tail from the chain.
+      const tail = (await loadAllTransfers(latestIndexedId + BigInt(1))).filter(isMine);
+      return [...tail, ...indexed];
     } catch (err) {
       console.error("indexer lookup failed, scanning the chain instead", err);
     }
   }
-  return (await loadAllTransfers()).filter((t) => t.sender.toLowerCase() === address.toLowerCase());
+  return (await loadAllTransfers()).filter(isMine);
 }
 
-async function loadAllTransfers(): Promise<(OnchainTransfer & { id: bigint })[]> {
+/** Transfers with id >= `fromId` (default: all), read straight from the escrow. */
+async function loadAllTransfers(fromId = BigInt(1)): Promise<(OnchainTransfer & { id: bigint })[]> {
   const count = Number(
     await publicClient.readContract({ address: ESCROW_ADDRESS, abi: escrowAbi, functionName: "transferCount" }),
   );
-  const ids = Array.from({ length: count }, (_, i) => BigInt(i + 1));
+  const first = Number(fromId);
+  const ids = Array.from({ length: Math.max(0, count - first + 1) }, (_, i) => BigInt(first + i));
   const out: (OnchainTransfer & { id: bigint })[] = [];
   for (let i = 0; i < ids.length; i += 200) {
     const chunk = ids.slice(i, i + 200);
