@@ -23,7 +23,7 @@ export type InrRate = {
   updatedAt: string;
 };
 
-let cached: (InrRate & { fetchedAt: number }) | null = null;
+let cached: { rate: InrRate; fetchedAt: number } | null = null;
 
 async function fromFeed(): Promise<InrRate | null> {
   if (!FEED_ADDRESS) return null;
@@ -60,8 +60,8 @@ async function fromApi(): Promise<InrRate> {
 }
 
 export async function getInrRate(): Promise<InrRate> {
-  if (cached && Date.now() - cached.fetchedAt < TTL_MS) return cached;
+  if (cached && Date.now() - cached.fetchedAt < TTL_MS) return cached.rate;
   const rate = (await fromFeed()) ?? (await fromApi());
-  cached = { ...rate, fetchedAt: Date.now() };
+  cached = { rate, fetchedAt: Date.now() };
   return rate;
 }
