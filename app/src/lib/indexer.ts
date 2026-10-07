@@ -83,7 +83,10 @@ type StatRow = {
   settledAt: number | null;
 };
 
-/** Public totals from the indexer, leaving out `excludedSenders` (automated test accounts). */
+/**
+ * Public totals from the indexer, leaving out `excludedSenders` (automated test accounts) and links the sender collected
+ * themselves (testing, not sending money to anyone).
+ */
 export async function indexerStats(excludedSenders: readonly string[] = []): Promise<IndexedStats> {
   const data = await gql<{ Transfer: StatRow[]; RateUpdate: { inrPerUsdE6: string; blockTime: number }[] }>(
     `query AnvayStats($excluded: [String!]!) {
@@ -94,7 +97,7 @@ export async function indexerStats(excludedSenders: readonly string[] = []): Pro
     }`,
     { excluded: excludedSenders.map((a) => a.toLowerCase()) },
   );
-  const rows = data.Transfer;
+  const rows = data.Transfer.filter((t) => !(t.status === "claimed" && t.recipient === t.sender));
   const sum = (list: StatRow[]) => list.reduce((acc, t) => acc + BigInt(t.amount), BigInt(0));
   const claimed = rows.filter((t) => t.status === "claimed");
   return {
@@ -106,8 +109,7 @@ export async function indexerStats(excludedSenders: readonly string[] = []): Pro
     volume: sum(rows).toString(),
     collectedVolume: sum(claimed).toString(),
     senders: new Set(rows.map((t) => t.sender)).size,
-    // People other than the sender: collecting your own link (a test) isn't sending money to someone.
-    recipients: new Set(claimed.filter((t) => t.recipient && t.recipient !== t.sender).map((t) => t.recipient)).size,
+    recipients: new Set(claimed.map((t) => t.recipient).filter(Boolean)).size,
     recent: rows.slice(0, 10).map((t) => ({
       id: t.id,
       amount: String(t.amount),

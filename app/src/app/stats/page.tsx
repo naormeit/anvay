@@ -49,7 +49,10 @@ export default function StatsPage() {
           {stats && (stats.source === "envio" ? " · indexed by Envio" : " · read from the contract")}
         </span>
         <h1 className="text-3xl font-semibold tracking-tight">Anvay in numbers</h1>
-        <p className="text-sm text-muted">Real usage only. Transfers made by our automated tests are left out.</p>
+        <p className="text-sm text-muted">
+          Real usage only. Links made by our automated tests, and links collected by the person who sent them, are left
+          out.
+        </p>
       </section>
 
       {error && <Notice tone="danger">{error}</Notice>}
