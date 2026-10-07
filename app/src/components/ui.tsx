@@ -97,5 +97,5 @@ export function Button({ variant = "primary", className = "", ...props }: Button
 
 export function Notice({ tone = "muted", children }: { tone?: "muted" | "danger" | "success"; children: React.ReactNode }) {
   const color = { muted: "text-muted", danger: "text-danger", success: "text-success" }[tone];
-  return <p className={`text-sm ${color}`}>{children}</p>;
+  return <p className={`text-sm break-words ${color}`}>{children}</p>;
 }

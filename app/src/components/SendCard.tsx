@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { txErrorMessage } from "@/lib/errors";
 import { formatInr, formatUsd, inrToUsdUnits, parseInr, parseUsd } from "@/lib/format";
 import { useInrRateSource } from "@/lib/hooks";
 import { useCreateLink, type CreatedLink } from "@/lib/useCreateLink";
@@ -57,7 +58,7 @@ export function SendCard({
       onSent();
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(txErrorMessage(err));
     }
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { txErrorMessage } from "@/lib/errors";
 import { formatInr, formatUsd } from "@/lib/format";
 import { useCreateLink, type CreatedLink } from "@/lib/useCreateLink";
 import { LinkReady } from "./LinkReady";
@@ -99,7 +100,7 @@ export function AssistantCard({
       onSent();
     } catch (err) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(txErrorMessage(err));
     }
   }
 
