@@ -3,6 +3,6 @@
   "evm": {
     "chainSelectorName": "monad-testnet",
     "rateFeedAddress": "0x12cC9B5656F7593C2FeF04964D35752d7e3dc60F",
-    "gasLimit": "300000"
+    "gasLimit": "180000"
   }
 }
