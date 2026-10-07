@@ -4,3 +4,4 @@ generated/
 build/
 *.log
 .envio/
+!.env.example
