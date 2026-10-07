@@ -50,38 +50,40 @@ async function gql<T>(query: string, variables: Record<string, unknown> = {}): P
   return body.data;
 }
 
-type StatsRow = {
-  links: number;
-  collected: number;
-  cancelled: number;
-  volume: string;
-  collectedVolume: string;
-  senders: number;
-  recipients: number;
+type StatRow = {
+  id: string;
+  sender: string;
+  recipient: string | null;
+  amount: string;
+  status: Activity["status"];
+  createdAt: number;
+  settledAt: number | null;
 };
 
-export async function indexerStats(): Promise<IndexedStats> {
-  const data = await gql<{
-    Stats: StatsRow[];
-    Transfer: { id: string; amount: string; status: Activity["status"]; createdAt: number; settledAt: number | null }[];
-  }>(`
-    query AnvayStats {
-      Stats(where: { id: { _eq: "global" } }) { links collected cancelled volume collectedVolume senders recipients }
-      Transfer(order_by: { createdAt: desc }, limit: 10) { id amount status createdAt settledAt }
-    }
-  `);
-  const s = data.Stats[0];
+/** Public totals from the indexer, leaving out `excludedSenders` (automated test accounts). */
+export async function indexerStats(excludedSenders: readonly string[] = []): Promise<IndexedStats> {
+  const data = await gql<{ Transfer: StatRow[] }>(
+    `query AnvayStats($excluded: [String!]!) {
+      Transfer(where: { sender: { _nin: $excluded } }, order_by: { createdAt: desc }) {
+        id sender recipient amount status createdAt settledAt
+      }
+    }`,
+    { excluded: excludedSenders.map((a) => a.toLowerCase()) },
+  );
+  const rows = data.Transfer;
+  const sum = (list: StatRow[]) => list.reduce((acc, t) => acc + BigInt(t.amount), BigInt(0));
+  const claimed = rows.filter((t) => t.status === "claimed");
   return {
     source: "envio",
-    links: s?.links ?? 0,
-    collected: s?.collected ?? 0,
-    cancelled: s?.cancelled ?? 0,
-    pending: (s?.links ?? 0) - (s?.collected ?? 0) - (s?.cancelled ?? 0),
-    volume: String(s?.volume ?? "0"),
-    collectedVolume: String(s?.collectedVolume ?? "0"),
-    senders: s?.senders ?? 0,
-    recipients: s?.recipients ?? 0,
-    recent: data.Transfer.map((t) => ({
+    links: rows.length,
+    collected: claimed.length,
+    cancelled: rows.filter((t) => t.status === "cancelled").length,
+    pending: rows.filter((t) => t.status === "pending").length,
+    volume: sum(rows).toString(),
+    collectedVolume: sum(claimed).toString(),
+    senders: new Set(rows.map((t) => t.sender)).size,
+    recipients: new Set(claimed.map((t) => t.recipient).filter(Boolean)).size,
+    recent: rows.slice(0, 10).map((t) => ({
       id: t.id,
       amount: String(t.amount),
       status: t.status,

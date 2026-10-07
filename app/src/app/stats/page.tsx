@@ -53,6 +53,7 @@ export default function StatsPage() {
           Live from Monad{isMainnet ? "" : " testnet"}
           {stats && (stats.source === "envio" ? ", indexed by Envio." : ", read directly from the contract.")}
         </p>
+        <p className="text-xs text-muted">Real usage only: transfers made by our automated tests are excluded.</p>
       </section>
 
       {error && <Notice tone="danger">{error}</Notice>}

@@ -2,6 +2,7 @@ import { ESCROW_ADDRESS, LINK_LIFETIME_SECONDS, publicClient } from "@/lib/confi
 import { escrowAbi, toTransfer, TransferStatus } from "@/lib/contracts";
 import { indexerStats, indexerUrl, type Activity, type IndexedStats, type StatsResponse } from "@/lib/indexer";
 import { getInrRate } from "@/lib/rate";
+import { isTestSender, TEST_SENDERS } from "@/lib/testAccounts";
 
 const CACHE_MS = 30_000;
 let cached: { at: number; body: StatsResponse } | null = null;
@@ -23,7 +24,7 @@ async function chainStats(): Promise<IndexedStats> {
         })),
       })
     : [];
-  const transfers = raw.map((r, i) => ({ ...toTransfer(r), id: ids[i] }));
+  const transfers = raw.map((r, i) => ({ ...toTransfer(r), id: ids[i] })).filter((t) => !isTestSender(t.sender));
 
   let volume = BigInt(0);
   let collectedVolume = BigInt(0);
@@ -59,13 +60,16 @@ async function chainStats(): Promise<IndexedStats> {
   };
 }
 
-/** Public usage numbers for the /stats page. Served from the Envio indexer when configured, else from the chain. */
+/**
+ * Public usage numbers for the /stats page, excluding automated test accounts. Served from the Envio indexer when
+ * configured, else read from the chain.
+ */
 export async function GET() {
   if (cached && Date.now() - cached.at < CACHE_MS) return Response.json(cached.body);
   try {
     let stats: IndexedStats | null = null;
     if (indexerUrl) {
-      stats = await indexerStats().catch((err) => {
+      stats = await indexerStats(TEST_SENDERS).catch((err) => {
         console.error("indexer stats failed, falling back to chain", err);
         return null;
       });
