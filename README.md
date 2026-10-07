@@ -52,6 +52,25 @@ Passkeys sync through iCloud Keychain and Google Password Manager, so the same a
 
 Tests: [`app/scripts/mera-keys.test.mts`](app/scripts/mera-keys.test.mts) checks the derivation, including that Mera and viem agree on the account address. [`app/scripts/passkey-flow.mjs`](app/scripts/passkey-flow.mjs) drives Chrome with a virtual PRF authenticator through sign-up, faucet, sending, reload and recovery, and a second account collecting.
 
+### Live rupee rate: Chainlink CRE
+
+Rupee amounts come from **`InrRateFeed`** on Monad, written by a Chainlink Runtime Environment workflow ([`cre/inr-rate/main.ts`](cre/inr-rate/main.ts)):
+
+1. A cron trigger fires (every 10 minutes when deployed).
+2. Each node fetches USD→INR from three independent public sources (open.er-api, Frankfurter/ECB and fawazahmed0's currency-api), drops implausible answers, and takes the median. At least two sources must answer.
+3. The DON agrees on the median of the nodes' answers (`consensusMedianAggregation`).
+4. The report `abi.encode(uint256 inrPerUsdE6, uint64 observedAt)` is written through the Chainlink forwarder to [`InrRateFeed`](src/InrRateFeed.sol). The feed only accepts the forwarder, rejects stale or replayed reports, and rejects rates outside 10–1000 INR.
+
+The app reads the feed on the server and labels amounts "via Chainlink on Monad". If the feed is older than 24 hours, it falls back to a public API.
+
+CRE supports Monad testnet for simulation; deploying to the Chainlink DON on Monad is mainnet-only and needs Early Access. The workflow has been run with `cre workflow simulate --broadcast`, which writes for real through Monad testnet's simulation forwarder ([example update](https://testnet.monadvision.com/tx/0x181a023afd86b9148a6b3c8f853d4512ba386c0a09a060d2aab4ce24b01a0890)). Moving to production is a forwarder change (`setForwarder`) plus `cre workflow deploy`.
+
+```bash
+cd cre && cp .env.example .env    # funded Monad testnet key for gas
+cre login
+cre workflow simulate inr-rate --target staging-settings --broadcast
+```
+
 ### The AI assistant
 
 "Just say it" uses **Qwen** (`qwen/qwen3.8-27b`) with a single `draft_payment` tool. It understands English, Hindi, Hinglish and Devanagari, plus Indian number words (hazaar, lakh, crore). The model only drafts a payment. The user confirms every one, and the server enforces the rules:
@@ -62,12 +81,13 @@ Tests: [`app/scripts/mera-keys.test.mts`](app/scripts/mera-keys.test.mts) checks
 
 ## Contracts
 
-Both contracts are source-verified on MonadVision (Sourcify).
+All contracts are source-verified on MonadVision (Sourcify).
 
 | Contract | Testnet address |
 | --- | --- |
 | `ClaimLinkEscrow` | [`0x607B0075fd9602820AA9Ef4395D7b32657a10cDa`](https://testnet.monadvision.com/address/0x607B0075fd9602820AA9Ef4395D7b32657a10cDa) |
 | `MockAUSD` (6 decimals, testnet only) | [`0x73E297c20cdee9291D09A66563C78939E5CA9aB5`](https://testnet.monadvision.com/address/0x73E297c20cdee9291D09A66563C78939E5CA9aB5) |
+| `InrRateFeed` (Chainlink CRE consumer) | [`0x12cC9B5656F7593C2FeF04964D35752d7e3dc60F`](https://testnet.monadvision.com/address/0x12cC9B5656F7593C2FeF04964D35752d7e3dc60F) |
 
 On mainnet (chain 143) the escrow uses Agora's AUSD at `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`. [`script/DeployEscrow.s.sol`](script/DeployEscrow.s.sol) picks the right token for the chain.
 
@@ -84,7 +104,9 @@ The live app runs on testnet, so anyone can try it for free. Mainnet support is 
 ```
 src/ClaimLinkEscrow.sol      escrow: deposit, claim (EIP-712), cancel
 src/MockAUSD.sol             testnet stand-in for AUSD
-test/ClaimLinkEscrow.t.sol   26 Foundry tests incl. front-running, replay, malleability, fuzz
+src/InrRateFeed.sol          Chainlink CRE consumer holding the USD->INR rate
+test/                        35 Foundry tests incl. front-running, replay, malleability, fuzz, forwarder checks
+cre/inr-rate/                Chainlink CRE workflow (TypeScript) writing the rate on-chain
 script/                      deploy script, testnet-fork and mainnet-fork (real AUSD) end-to-end checks
 app/                         Next.js app (Privy login, send, claim, relayer, assistant)
 app/scripts/                 API tests against a local fork and a fake/real Qwen
@@ -109,7 +131,7 @@ npm run dev                  # http://localhost:3000
 
 ## Tech
 
-Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Next.js · viem · Mera passkeys · Privy embedded wallets · Qwen (via Groq)
+Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Chainlink CRE · Next.js · viem · Mera passkeys · Privy embedded wallets · Qwen (via Groq)
 
 ## Limitations and next steps
 

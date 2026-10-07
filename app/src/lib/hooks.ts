@@ -34,23 +34,35 @@ export function useDollarBalance(address: Address | undefined) {
   return { balance, refresh };
 }
 
-let ratePromise: Promise<number | null> | null = null;
+type RateInfo = { inrPerUsd: number; source: "chainlink" | "open.er-api" };
+let ratePromise: Promise<RateInfo | null> | null = null;
 
-/** Today's rupees-per-dollar rate, fetched once per page load. Null while loading or if unavailable. */
-export function useInrRate() {
-  const [rate, setRate] = useState<number | null>(null);
+function useRateInfo() {
+  const [info, setInfo] = useState<RateInfo | null>(null);
   useEffect(() => {
     ratePromise ??= fetch("/api/rate")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { inrPerUsd?: number } | null) => d?.inrPerUsd ?? null)
+      .then((d: Partial<RateInfo> | null) =>
+        d?.inrPerUsd ? { inrPerUsd: d.inrPerUsd, source: d.source ?? "open.er-api" } : null,
+      )
       .catch(() => null);
     let cancelled = false;
-    ratePromise.then((r) => !cancelled && setRate(r));
+    ratePromise.then((r) => !cancelled && setInfo(r));
     return () => {
       cancelled = true;
     };
   }, []);
-  return rate;
+  return info;
+}
+
+/** Today's rupees-per-dollar rate, fetched once per page load. Null while loading or if unavailable. */
+export function useInrRate() {
+  return useRateInfo()?.inrPerUsd ?? null;
+}
+
+/** Where the rate came from: the Chainlink CRE feed on Monad, or the fallback API. */
+export function useInrRateSource() {
+  return useRateInfo()?.source ?? null;
 }
 
 function subscribeToHash(callback: () => void) {

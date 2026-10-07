@@ -5,6 +5,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import type { Account } from "./account";
 import { ESCROW_ADDRESS, LINK_LIFETIME_SECONDS, publicClient } from "./config";
 import { escrowAbi, toTransfer, type OnchainTransfer } from "./contracts";
+import { indexerTransfersBySender, indexerUrl } from "./indexer";
 import { openJson, sealJson } from "./meraKeys";
 import { loadSentLinks, saveSentLink, type SentLink } from "./sentLinks";
 
@@ -49,6 +50,26 @@ export async function saveSealedNote(owner: string, notesKey: CryptoKey, nonce: 
 
 // ---------------------------------------------------------------- loading
 
+/** This account's transfers: from the Envio indexer when configured, otherwise by scanning the escrow. */
+async function loadMyTransfers(address: Address): Promise<(OnchainTransfer & { id: bigint })[]> {
+  if (indexerUrl) {
+    try {
+      const rows = await indexerTransfersBySender(address);
+      return rows.map((r) => ({
+        id: BigInt(r.id),
+        sender: r.sender as Address,
+        claimKey: r.claimKey as Address,
+        amount: BigInt(r.amount),
+        expiresAt: BigInt(r.expiresAt),
+        status: r.status === "claimed" ? 2 : r.status === "cancelled" ? 3 : 1,
+      }));
+    } catch (err) {
+      console.error("indexer lookup failed, scanning the chain instead", err);
+    }
+  }
+  return (await loadAllTransfers()).filter((t) => t.sender.toLowerCase() === address.toLowerCase());
+}
+
 async function loadAllTransfers(): Promise<(OnchainTransfer & { id: bigint })[]> {
   const count = Number(
     await publicClient.readContract({ address: ESCROW_ADDRESS, abi: escrowAbi, functionName: "transferCount" }),
@@ -77,7 +98,7 @@ async function loadAllTransfers(): Promise<(OnchainTransfer & { id: bigint })[]>
  */
 async function recoverPasskeyLinks(account: Account): Promise<MyLink[]> {
   if (!account.linkKey || !account.notesKey) return [];
-  const mine = (await loadAllTransfers()).filter((t) => t.sender.toLowerCase() === account.address.toLowerCase());
+  const mine = await loadMyTransfers(account.address);
   if (mine.length === 0) return [];
 
   const nonceCount = await publicClient.getTransactionCount({ address: account.address });

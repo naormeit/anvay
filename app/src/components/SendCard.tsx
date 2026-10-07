@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatInr, formatUsd, inrToUsdUnits, parseInr, parseUsd } from "@/lib/format";
+import { useInrRateSource } from "@/lib/hooks";
 import { useCreateLink, type CreatedLink } from "@/lib/useCreateLink";
 import { LinkReady } from "./LinkReady";
 import { Button, Card, Notice } from "./ui";
@@ -32,6 +33,7 @@ export function SendCard({
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedLink | null>(null);
   const { createLink, step, busy } = useCreateLink();
+  const rateSource = useInrRateSource();
 
   const units = toUnits(amountInput, currency, inrPerUsd);
   const equivalent =
@@ -92,7 +94,11 @@ export function SendCard({
             disabled={busy}
           />
         </label>
-        {equivalent && <Notice>{equivalent} at today&apos;s rate</Notice>}
+        {equivalent && (
+          <Notice>
+            {equivalent} at today&apos;s rate{rateSource === "chainlink" && " (via Chainlink on Monad)"}
+          </Notice>
+        )}
         <input
           placeholder="Who is it for? (optional)"
           value={note}
