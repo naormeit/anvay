@@ -1,6 +1,6 @@
 import { ESCROW_ADDRESS, LINK_LIFETIME_SECONDS, publicClient } from "@/lib/config";
 import { escrowAbi, toTransfer, TransferStatus } from "@/lib/contracts";
-import { indexerStats, indexerUrl, type Activity, type IndexedStats, type StatsResponse } from "@/lib/indexer";
+import { growthSeries, indexerStats, indexerUrl, type Activity, type IndexedStats, type StatsResponse } from "@/lib/indexer";
 import { getInrRate } from "@/lib/rate";
 import { isTestSender, TEST_SENDERS } from "@/lib/testAccounts";
 
@@ -57,6 +57,10 @@ async function chainStats(): Promise<IndexedStats> {
     senders: senders.size,
     recipients: null,
     recent,
+    growth: growthSeries(
+      transfers.map((t) => ({ amount: t.amount, createdAt: Number(t.expiresAt) - LINK_LIFETIME_SECONDS })),
+    ),
+    rateHistory: [],
   };
 }
 
@@ -76,7 +80,7 @@ export async function GET() {
     }
     stats ??= await chainStats();
     const rate = await getInrRate().catch(() => null);
-    const body: StatsResponse = { ...stats, rate };
+    const body: StatsResponse = { ...stats, rate, asOf: Math.floor(Date.now() / 1000) };
     cached = { at: Date.now(), body };
     return Response.json(body);
   } catch (err) {

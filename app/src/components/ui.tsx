@@ -2,44 +2,90 @@
 
 import Link from "next/link";
 import { useAccount } from "@/lib/account";
-import { isMainnet } from "@/lib/config";
+import { ESCROW_ADDRESS, explorerAddress, isMainnet } from "@/lib/config";
 
-export function Shell({ children }: { children: React.ReactNode }) {
+export const GITHUB_URL = "https://github.com/naormeit/anvay";
+
+export function Logo() {
+  return (
+    <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+      <span className="hero-gradient grid h-8 w-8 place-items-center rounded-lg text-sm font-bold shadow-soft">A</span>
+      Anvay
+      {!isMainnet && (
+        <span className="rounded-full border border-border px-2 py-0.5 text-xs font-normal text-muted">test mode</span>
+      )}
+    </Link>
+  );
+}
+
+export function Footer() {
+  return (
+    <footer className="mt-12 flex flex-col items-center gap-2 border-t border-border pt-6 text-xs text-muted">
+      <nav className="flex flex-wrap justify-center gap-x-5 gap-y-1">
+        <Link href="/" className="hover:text-foreground">
+          Home
+        </Link>
+        <Link href="/stats" className="hover:text-foreground">
+          Live stats
+        </Link>
+        <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+          GitHub
+        </a>
+        <a href={explorerAddress(ESCROW_ADDRESS)} target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
+          Escrow contract
+        </a>
+      </nav>
+      <p>{isMainnet ? "Built on Monad." : "Test mode on Monad testnet. Test dollars have no real value."}</p>
+    </footer>
+  );
+}
+
+export function Shell({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   const { account, settingUp, signOut } = useAccount();
   return (
-    <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 pb-10">
-      <header className="flex items-center justify-between py-5">
-        <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-accent-foreground">A</span>
-          Anvay
-          {!isMainnet && (
-            <span className="rounded-full border border-border px-2 py-0.5 text-xs font-normal text-muted">
-              test mode
-            </span>
-          )}
-        </Link>
-        {(account || settingUp) && (
-          <button onClick={signOut} className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground">
-            Sign out
-          </button>
-        )}
-      </header>
-      <main className="flex flex-1 flex-col gap-4">{children}</main>
+    <div className="page-glow flex flex-1 flex-col">
+      <div className={`mx-auto flex w-full flex-1 flex-col px-4 pb-8 ${wide ? "max-w-3xl" : "max-w-md"}`}>
+        <header className="flex items-center justify-between py-5">
+          <Logo />
+          <div className="-mr-2 flex items-center">
+            <Link href="/stats" className="rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground">
+              Stats
+            </Link>
+            {(account || settingUp) && (
+              <button onClick={signOut} className="rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground">
+                Sign out
+              </button>
+            )}
+          </div>
+        </header>
+        <main className="flex flex-1 flex-col gap-4">{children}</main>
+        <Footer />
+      </div>
     </div>
   );
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`rounded-2xl border border-border bg-card p-5 ${className}`}>{children}</section>;
+  return <section className={`rounded-2xl border border-border bg-card p-5 shadow-soft ${className}`}>{children}</section>;
 }
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" };
+export function CardTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 font-medium">
+      <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent-soft text-accent">{icon}</span>
+      {children}
+    </p>
+  );
+}
+
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" | "glass" };
 
 export function Button({ variant = "primary", className = "", ...props }: ButtonProps) {
   const styles = {
     primary: "bg-accent text-accent-foreground hover:opacity-90",
     secondary: "border border-border bg-card hover:bg-background",
     danger: "border border-border text-danger hover:bg-background",
+    glass: "border border-white/25 bg-white/15 text-hero-foreground hover:bg-white/25",
   }[variant];
   return (
     <button

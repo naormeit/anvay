@@ -5,7 +5,8 @@ import { formatInr, formatUsd, inrToUsdUnits, parseInr, parseUsd } from "@/lib/f
 import { useInrRateSource } from "@/lib/hooks";
 import { useCreateLink, type CreatedLink } from "@/lib/useCreateLink";
 import { LinkReady } from "./LinkReady";
-import { Button, Card, Notice } from "./ui";
+import { LinkIcon } from "./icons";
+import { Button, Card, CardTitle, Notice } from "./ui";
 
 type Currency = "USD" | "INR";
 
@@ -66,7 +67,7 @@ export function SendCard({
     <Card>
       <form onSubmit={send} className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <p className="font-medium">Send money</p>
+          <CardTitle icon={<LinkIcon className="h-4 w-4" />}>Send money</CardTitle>
           <div className="flex rounded-lg border border-border p-0.5 text-sm" role="group" aria-label="Currency">
             {(["USD", "INR"] as const).map((c) => (
               <button

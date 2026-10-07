@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { formatInr, formatUsd } from "@/lib/format";
 import { useCreateLink, type CreatedLink } from "@/lib/useCreateLink";
 import { LinkReady } from "./LinkReady";
-import { Button, Card, Notice } from "./ui";
+import { ChatIcon } from "./icons";
+import { Button, Card, CardTitle, Notice } from "./ui";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type Draft = { units: bigint; amount: number; currency: "USD" | "INR"; recipient: string | null; text?: string };
@@ -110,7 +111,7 @@ export function AssistantCard({
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="font-medium">Just say it</p>
+        <CardTitle icon={<ChatIcon className="h-4 w-4" />}>Just say it</CardTitle>
         {messages.length > 0 && !busy && (
           <button
             onClick={() => {

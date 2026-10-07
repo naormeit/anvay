@@ -9,7 +9,8 @@ import { escrowAbi, toTransfer, TransferStatus } from "@/lib/contracts";
 import { formatUsd } from "@/lib/format";
 import { loadMyLinks, type MyLink } from "@/lib/myLinks";
 import { useSendTx } from "@/lib/useSendTx";
-import { Button, Card, Notice } from "./ui";
+import { ArrowRightIcon } from "./icons";
+import { Button, Card, CardTitle, Notice } from "./ui";
 import { ShareLink } from "./ShareLink";
 
 type LinkState = "waiting" | "claimed" | "cancelled" | "expired" | "unknown";
@@ -98,7 +99,7 @@ export function SentList({ onChange }: { onChange: () => void }) {
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="font-medium">Sent</p>
+        <CardTitle icon={<ArrowRightIcon className="h-4 w-4" />}>Sent</CardTitle>
         <button
           onClick={() => setVersion((v) => v + 1)}
           className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground"

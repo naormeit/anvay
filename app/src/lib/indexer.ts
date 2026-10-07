@@ -7,6 +7,10 @@ export const indexerUrl = process.env.NEXT_PUBLIC_ENVIO_GRAPHQL_URL || "";
 
 export type Activity = { id: string; amount: string; status: "pending" | "claimed" | "cancelled"; at: number };
 
+/** Running totals at `at` (unix seconds). */
+export type GrowthPoint = { at: number; links: number; volume: string };
+export type RatePoint = { at: number; inrPerUsd: number };
+
 export type IndexedStats = {
   source: "envio" | "chain";
   links: number;
@@ -18,10 +22,16 @@ export type IndexedStats = {
   senders: number;
   recipients: number | null;
   recent: Activity[];
+  /** Running totals of links and dollars sent, one point per transfer, oldest first. */
+  growth: GrowthPoint[];
+  /** Rates written on-chain by the Chainlink CRE workflow, oldest first. Empty without the indexer. */
+  rateHistory: RatePoint[];
 };
 
 export type StatsResponse = IndexedStats & {
   rate: { inrPerUsd: number; source: string; updatedAt: string } | null;
+  /** When these numbers were computed (unix seconds). */
+  asOf: number;
 };
 
 export type IndexedTransfer = {
@@ -50,6 +60,19 @@ async function gql<T>(query: string, variables: Record<string, unknown> = {}): P
   return body.data;
 }
 
+/** Running totals after each transfer, oldest first. */
+export function growthSeries(rows: { amount: string | bigint; createdAt: number }[]): GrowthPoint[] {
+  let links = 0;
+  let volume = BigInt(0);
+  return [...rows]
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .map((r) => {
+      links += 1;
+      volume += BigInt(r.amount);
+      return { at: r.createdAt, links, volume: volume.toString() };
+    });
+}
+
 type StatRow = {
   id: string;
   sender: string;
@@ -62,11 +85,12 @@ type StatRow = {
 
 /** Public totals from the indexer, leaving out `excludedSenders` (automated test accounts). */
 export async function indexerStats(excludedSenders: readonly string[] = []): Promise<IndexedStats> {
-  const data = await gql<{ Transfer: StatRow[] }>(
+  const data = await gql<{ Transfer: StatRow[]; RateUpdate: { inrPerUsdE6: string; blockTime: number }[] }>(
     `query AnvayStats($excluded: [String!]!) {
       Transfer(where: { sender: { _nin: $excluded } }, order_by: { createdAt: desc }) {
         id sender recipient amount status createdAt settledAt
       }
+      RateUpdate(order_by: { blockTime: desc }, limit: 120) { inrPerUsdE6 blockTime }
     }`,
     { excluded: excludedSenders.map((a) => a.toLowerCase()) },
   );
@@ -89,6 +113,8 @@ export async function indexerStats(excludedSenders: readonly string[] = []): Pro
       status: t.status,
       at: t.settledAt ?? t.createdAt,
     })),
+    growth: growthSeries(rows),
+    rateHistory: data.RateUpdate.map((r) => ({ at: r.blockTime, inrPerUsd: Number(r.inrPerUsdE6) / 1e6 })).reverse(),
   };
 }
 
