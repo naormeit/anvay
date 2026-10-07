@@ -1,0 +1,46 @@
+"""A payment link: one escrow transfer and its current state."""
+type Transfer {
+  id: ID! # escrow transfer id
+  sender: String! @index # lowercase
+  claimKey: String! # lowercase address of the link key
+  amount: BigInt! # AUSD, 6 decimals
+  expiresAt: BigInt!
+  status: String! # pending | claimed | cancelled
+  createdAt: Int!
+  createdTx: String!
+  recipient: String
+  relayer: String
+  settledAt: Int
+  settledTx: String
+}
+
+"""Totals per address (lowercase)."""
+type Account {
+  id: ID!
+  linksSent: Int!
+  amountSent: BigInt!
+  linksCollected: Int!
+  amountCollected: BigInt!
+}
+
+"""Global totals. Single row with id "global"."""
+type Stats {
+  id: ID!
+  links: Int!
+  collected: Int!
+  cancelled: Int!
+  volume: BigInt!
+  collectedVolume: BigInt!
+  senders: Int!
+  recipients: Int!
+  lastActivity: Int!
+}
+
+"""Every USD/INR rate written by the Chainlink CRE workflow."""
+type RateUpdate {
+  id: ID!
+  inrPerUsdE6: BigInt!
+  observedAt: BigInt!
+  blockTime: Int!
+  tx: String!
+}

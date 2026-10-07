@@ -71,6 +71,21 @@ cre login
 cre workflow simulate inr-rate --target staging-settings --broadcast
 ```
 
+### Indexing: Envio
+
+[`indexer/`](indexer) is an Envio HyperIndex project that reads Monad testnet through HyperSync. It indexes `ClaimLinkEscrow` (`Deposited`, `Claimed`, `Cancelled`) and `InrRateFeed` (`RateUpdated`) into:
+
+- `Transfer`: each payment link and its current state (pending, claimed or cancelled; who collected it; when)
+- `Account`: per-address totals sent and collected
+- `Stats`: global links, collected, volume, unique senders and recipients
+- `RateUpdate`: every rate the Chainlink workflow wrote
+
+The app uses it for the public [/stats](https://anvay-pay.vercel.app/stats) page and to find a passkey account's transfers quickly when rebuilding its links. Both fall back to reading the contract directly when `NEXT_PUBLIC_ENVIO_GRAPHQL_URL` isn't set.
+
+```bash
+cd indexer && npm install && npm test   # Envio runs on Linux/macOS (WSL on Windows); tests replay real HyperSync data
+```
+
 ### The AI assistant
 
 "Just say it" uses **Qwen** (`qwen/qwen3.8-27b`) with a single `draft_payment` tool. It understands English, Hindi, Hinglish and Devanagari, plus Indian number words (hazaar, lakh, crore). The model only drafts a payment. The user confirms every one, and the server enforces the rules:
@@ -107,6 +122,7 @@ src/MockAUSD.sol             testnet stand-in for AUSD
 src/InrRateFeed.sol          Chainlink CRE consumer holding the USD->INR rate
 test/                        35 Foundry tests incl. front-running, replay, malleability, fuzz, forwarder checks
 cre/inr-rate/                Chainlink CRE workflow (TypeScript) writing the rate on-chain
+indexer/                     Envio HyperIndex indexer for the escrow and the rate feed
 script/                      deploy script, testnet-fork and mainnet-fork (real AUSD) end-to-end checks
 app/                         Next.js app (Privy login, send, claim, relayer, assistant)
 app/scripts/                 API tests against a local fork and a fake/real Qwen
@@ -131,7 +147,7 @@ npm run dev                  # http://localhost:3000
 
 ## Tech
 
-Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Chainlink CRE · Next.js · viem · Mera passkeys · Privy embedded wallets · Qwen (via Groq)
+Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Chainlink CRE · Envio HyperIndex · Next.js · viem · Mera passkeys · Privy embedded wallets · Qwen (via Groq)
 
 ## Limitations and next steps
 

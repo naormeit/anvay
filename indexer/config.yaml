@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: anvay-indexer
+description: Anvay claim-link payments and the Chainlink CRE USD/INR rate on Monad
+disable_default_cross_chain: true
+chains:
+- id: 10143 # Monad testnet (HyperSync)
+  start_block: 68661941 # ClaimLinkEscrow deployment
+  contracts:
+  - name: ClaimLinkEscrow
+    address:
+    - "0x607B0075fd9602820AA9Ef4395D7b32657a10cDa"
+    events:
+    - event: Deposited(uint256 indexed id, address indexed sender, address indexed claimKey, uint96 amount, uint64 expiresAt)
+    - event: Claimed(uint256 indexed id, address indexed recipient, address relayer, uint96 amount)
+    - event: Cancelled(uint256 indexed id, address indexed sender, uint96 amount)
+  - name: InrRateFeed
+    address:
+    - "0x12cC9B5656F7593C2FeF04964D35752d7e3dc60F"
+    events:
+    - event: RateUpdated(uint256 inrPerUsdE6, uint64 observedAt)
+field_selection:
+  transaction_fields:
+  - hash
