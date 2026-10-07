@@ -77,6 +77,45 @@ html {
     radial-gradient(40rem 24rem at -10% 10%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%);
 }
 
+.page-glow-strong {
+  background:
+    radial-gradient(36rem 22rem at 100% 0%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%),
+    radial-gradient(30rem 26rem at 0% 35%, color-mix(in srgb, #f59e0b 16%, transparent), transparent 70%),
+    radial-gradient(34rem 24rem at 100% 85%, color-mix(in srgb, #e11d48 13%, transparent), transparent 70%);
+}
+
+/* Tinted cards: a soft wash of colour from one corner into the card background. */
+.tint-warm,
+.tint-amber,
+.tint-rose,
+.tint-neutral {
+  border-color: color-mix(in srgb, var(--tint) 22%, var(--border));
+  background: linear-gradient(150deg, color-mix(in srgb, var(--tint) var(--tint-strength), var(--card)) 0%, var(--card) 70%);
+}
+.tint-warm {
+  --tint: var(--accent);
+  --tint-strength: 17%;
+}
+.tint-amber {
+  --tint: #f59e0b;
+  --tint-strength: 20%;
+}
+.tint-rose {
+  --tint: #e11d48;
+  --tint-strength: 13%;
+}
+.tint-neutral {
+  --tint: var(--accent);
+  --tint-strength: 8%;
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, var(--accent), #e11d48);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 @keyframes rise {
   from {
     opacity: 0;

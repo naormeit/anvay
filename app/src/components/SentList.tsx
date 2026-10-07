@@ -1,137 +1,120 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { encodeFunctionData } from "viem";
-import { useAccount } from "@/lib/account";
+import { useState } from "react";
+import Link from "next/link";
 import { buildClaimUrl } from "@/lib/claimLink";
-import { ESCROW_ADDRESS, publicClient } from "@/lib/config";
-import { escrowAbi, toTransfer, TransferStatus } from "@/lib/contracts";
 import { formatUsd } from "@/lib/format";
-import { loadMyLinks, type MyLink } from "@/lib/myLinks";
-import { useSendTx } from "@/lib/useSendTx";
+import { linkStateLabel, useMyLinks, type LinkState } from "@/lib/useMyLinks";
 import { ArrowRightIcon } from "./icons";
 import { Button, Card, CardTitle, Notice } from "./ui";
 import { ShareLink } from "./ShareLink";
 
-type LinkState = "waiting" | "claimed" | "cancelled" | "expired" | "unknown";
-
-const label: Record<LinkState, string> = {
-  waiting: "Waiting to be collected",
-  claimed: "Collected",
-  cancelled: "Cancelled, money returned",
-  expired: "Expired, cancel to get it back",
-  unknown: "Checking…",
+const chip: Record<LinkState, string> = {
+  waiting: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  claimed: "bg-success/15 text-success",
+  cancelled: "bg-muted/15 text-muted",
+  expired: "bg-danger/10 text-danger",
+  unknown: "bg-muted/10 text-muted",
 };
 
-async function readState(id: string): Promise<LinkState> {
-  const t = toTransfer(
-    await publicClient.readContract({
-      address: ESCROW_ADDRESS,
-      abi: escrowAbi,
-      functionName: "transfers",
-      args: [BigInt(id)],
-    }),
-  );
-  if (t.status === TransferStatus.Claimed) return "claimed";
-  if (t.status === TransferStatus.Cancelled) return "cancelled";
-  if (BigInt(Math.floor(Date.now() / 1000)) > t.expiresAt) return "expired";
-  return "waiting";
+const filters = [
+  { key: "all", label: "All" },
+  { key: "waiting", label: "Waiting" },
+  { key: "claimed", label: "Collected" },
+  { key: "cancelled", label: "Cancelled" },
+] as const;
+type Filter = (typeof filters)[number]["key"];
+
+function matches(filter: Filter, state: LinkState) {
+  if (filter === "all") return true;
+  if (filter === "waiting") return state === "waiting" || state === "expired";
+  return state === filter;
 }
 
-/** Rendered only after sign-in, so it never runs during server rendering. */
-export function SentList({ onChange }: { onChange: () => void }) {
-  const { account } = useAccount();
-  const [links, setLinks] = useState<MyLink[]>([]);
-  const [states, setStates] = useState<Record<string, LinkState>>({});
-  const [version, setVersion] = useState(0);
+/**
+ * Links the signed-in account has sent. On the home screen it shows the latest few (`limit`) with a link to the
+ * Activity page; on the Activity page it shows everything with status filters. Rendered only after sign-in.
+ */
+export function SentList({ onChange, limit }: { onChange: () => void; limit?: number }) {
+  return <SentListView data={useMyLinks(onChange)} limit={limit} />;
+}
+
+/** The list itself, for a parent that already holds `useMyLinks()` data. */
+export function SentListView({
+  data,
+  limit,
+  filterable = false,
+}: {
+  data: ReturnType<typeof useMyLinks>;
+  limit?: number;
+  filterable?: boolean;
+}) {
+  const { links, stateOf, loading, refresh, cancel, cancelling, error } = data;
   const [open, setOpen] = useState<string | null>(null);
-  const [cancelling, setCancelling] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { submit, confirm } = useSendTx();
+  const [filter, setFilter] = useState<Filter>("all");
 
-  useEffect(() => {
-    if (!account) return;
-    let cancelled = false;
-    (async () => {
-      const loaded = await loadMyLinks(account).catch((err) => {
-        console.error("loading links failed", err);
-        return [] as MyLink[];
-      });
-      const entries = await Promise.all(
-        loaded.map(
-          async (l) => [l.uid, l.id ? await readState(l.id).catch(() => "unknown" as const) : "unknown"] as const,
-        ),
-      );
-      if (!cancelled) {
-        setLinks(loaded);
-        setStates(Object.fromEntries(entries));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [account, version]);
-
-  async function cancel(link: MyLink) {
-    if (!link.id) return;
-    setCancelling(link.uid);
-    setError(null);
-    try {
-      await confirm(
-        await submit(
-          ESCROW_ADDRESS,
-          encodeFunctionData({ abi: escrowAbi, functionName: "cancel", args: [BigInt(link.id)] }),
-        ),
-      );
-      setVersion((v) => v + 1);
-      onChange();
-    } catch (err) {
-      console.error(err);
-      setError("Could not cancel. It may have just been collected.");
-    } finally {
-      setCancelling(null);
-    }
-  }
-
-  if (links.length === 0) return null;
+  if (!filterable && links.length === 0) return null;
   const anyRecovered = links.some((l) => l.recovered);
+  const shown = links.filter((l) => matches(filter, stateOf(l)));
+  const visible = limit ? shown.slice(0, limit) : shown;
 
   return (
-    <Card className="flex flex-col gap-3">
+    <Card tint="neutral" className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <CardTitle icon={<ArrowRightIcon className="h-4 w-4" />}>Sent</CardTitle>
-        <button
-          onClick={() => setVersion((v) => v + 1)}
-          className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground"
-        >
+        <button onClick={refresh} className="-mr-2 rounded-lg px-2 py-2.5 text-sm text-muted hover:text-foreground">
           Refresh
         </button>
       </div>
       {anyRecovered && (
         <Notice>Restored with your passkey. Your links work on any device where you sign in with it.</Notice>
       )}
+      {filterable && (
+        <div className="flex gap-1 overflow-x-auto rounded-xl bg-background/60 p-1 text-[13px]" role="tablist">
+          {filters.map((f) => {
+            const count = links.filter((l) => matches(f.key, stateOf(l))).length;
+            return (
+              <button
+                key={f.key}
+                role="tab"
+                aria-selected={filter === f.key}
+                onClick={() => setFilter(f.key)}
+                className={`flex-1 rounded-lg px-2 py-1.5 whitespace-nowrap transition ${
+                  filter === f.key ? "bg-card font-medium shadow-soft" : "text-muted hover:text-foreground"
+                }`}
+              >
+                {f.label} <span className="text-xs text-muted tabular-nums">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       {error && <Notice tone="danger">{error}</Notice>}
+      {filterable && loading && <Notice>Loading your links…</Notice>}
+      {filterable && !loading && visible.length === 0 && (
+        <Notice>{links.length === 0 ? "You haven't sent any links yet." : "No links here."}</Notice>
+      )}
       <ul className="flex flex-col divide-y divide-border">
-        {links.map((link) => {
-          const state = states[link.uid] ?? "unknown";
+        {visible.map((link) => {
+          const state = stateOf(link);
           const canAct = link.id && (state === "waiting" || state === "expired");
           const isOpen = open === link.uid;
           return (
             <li key={link.uid} className="flex flex-col gap-3 py-3">
               <button
-                className="flex items-center justify-between text-left"
+                className="flex items-center justify-between gap-3 text-left"
                 onClick={() => setOpen(isOpen ? null : link.uid)}
               >
-                <span>
-                  <span className="block font-medium">
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className="truncate font-medium">
                     {formatUsd(BigInt(link.amount))}
                     {link.note && <span className="font-normal text-muted"> · {link.note}</span>}
                   </span>
-                  <span className={`text-xs ${state === "claimed" ? "text-success" : "text-muted"}`}>
-                    {label[state]}
+                  <span className={`w-fit rounded-full px-2 py-0.5 text-[11px] font-medium ${chip[state]}`}>
+                    {linkStateLabel[state]}
                   </span>
                 </span>
-                <span className="text-xs text-muted">
+                <span className="shrink-0 text-xs text-muted">
                   {new Date(link.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                 </span>
               </button>
@@ -152,6 +135,11 @@ export function SentList({ onChange }: { onChange: () => void }) {
           );
         })}
       </ul>
+      {limit !== undefined && shown.length > limit && (
+        <Link href="/activity" className="flex items-center gap-1 text-sm font-medium text-accent hover:underline">
+          See all {shown.length} links <ArrowRightIcon className="h-4 w-4" />
+        </Link>
+      )}
     </Card>
   );
 }

@@ -110,7 +110,7 @@ export function AssistantCard({
   const lastReply = [...messages].reverse().find((m) => m.role === "assistant");
 
   return (
-    <Card className="flex flex-col gap-3">
+    <Card tint="amber" className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <CardTitle icon={<ChatIcon className="h-4 w-4" />}>Just say it</CardTitle>
         {messages.length > 0 && !busy && (

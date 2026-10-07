@@ -47,7 +47,7 @@ export default function Home() {
       <BalanceCard address={address} balance={balance} inrPerUsd={inrPerUsd} onChange={refresh} />
       <AssistantCard balance={balance} inrPerUsd={inrPerUsd} onSent={onSent} />
       <SendCard balance={balance} inrPerUsd={inrPerUsd} onSent={onSent} />
-      <SentList key={`${address}:${sentCount}`} onChange={refresh} />
+      <SentList key={`${address}:${sentCount}`} onChange={refresh} limit={5} />
     </Shell>
   );
 }

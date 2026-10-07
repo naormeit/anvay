@@ -65,7 +65,7 @@ export function SendCard({
   if (created) return <LinkReady link={created} inrPerUsd={inrPerUsd} onDone={() => setCreated(null)} />;
 
   return (
-    <Card>
+    <Card tint="rose">
       <form onSubmit={send} className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <CardTitle icon={<LinkIcon className="h-4 w-4" />}>Send money</CardTitle>

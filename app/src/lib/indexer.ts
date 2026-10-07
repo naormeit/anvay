@@ -143,3 +143,23 @@ export async function indexerTransfersBySender(
     latestIndexedId: BigInt(data.stats[0]?.links ?? 0),
   };
 }
+
+export type ReceivedTransfer = { id: string; sender: string; amount: string; at: number };
+
+/** Links an address has collected from someone else, newest first. */
+export async function indexerReceivedBy(recipient: string): Promise<ReceivedTransfer[]> {
+  const data = await gql<{ Transfer: { id: string; sender: string; amount: string; settledAt: number | null }[] }>(
+    `query Received($recipient: String!) {
+      Transfer(where: { recipient: { _eq: $recipient }, status: { _eq: "claimed" } }, order_by: { settledAt: desc }) {
+        id sender amount settledAt
+      }
+    }`,
+    { recipient: recipient.toLowerCase() },
+  );
+  return data.Transfer.filter((t) => t.sender !== recipient.toLowerCase()).map((t) => ({
+    id: t.id,
+    sender: t.sender,
+    amount: String(t.amount),
+    at: t.settledAt ?? 0,
+  }));
+}
