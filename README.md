@@ -11,9 +11,9 @@ Built on [Monad](https://monad.xyz) for the Metropolis hackathon (Track 2: Consu
 
 India receives more remittances than any other country. Sending money home today means bank forms, transfer fees, poor exchange rates and waits of hours or days. Anvay makes it as simple as sending a message:
 
-1. **Sign in** with a passkey (fingerprint, face or screen lock) or with email/phone. Anvay creates the account in the background. No seed phrases and no crypto words anywhere in the app.
+1. **Sign in** with a passkey (fingerprint, face or screen lock), Google or email. Anvay creates the account in the background. No seed phrases and no crypto words anywhere in the app.
 2. **Create a link** for any amount in dollars or rupees, or just type *"Send ₹5,000 to Mom"* or *"Papa ko 2 hazaar bhej do"*.
-3. **Share it** on WhatsApp. The recipient opens it, signs in with their phone or email, and taps **Collect**. They need no gas, no wallet and no app.
+3. **Share it** on WhatsApp. The recipient opens it, signs in with a passkey, Google or email, and taps **Collect**. They need no gas, no wallet and no app.
 
 Unclaimed money can be cancelled and returned at any time.
 
@@ -94,6 +94,35 @@ cd indexer && npm install && npm test   # Envio runs on Linux/macOS (WSL on Wind
 - a draft is only accepted if the user actually wrote that currency (models sometimes guess)
 - amounts are capped, and malformed tool output becomes a clarifying question, never a draft
 
+## Security model and known limits
+
+Anvay never holds anyone's money. Dollars wait in `ClaimLinkEscrow`, and only the contract's own rules can release them.
+
+### What protects a payment
+
+| Guarantee | How |
+| --- | --- |
+| Nobody can take money out of the escrow except by its rules | The contract has three functions: `deposit`, `claim`, `cancel`. It has no owner, no admin, no pause, no upgrade path and no sweep function. |
+| The link key never reaches a server | It is generated in the sender's browser and lives in the URL `#fragment`, which browsers never send in requests. Vercel, the API and its logs never see it. |
+| A claim cannot be redirected | The link key signs EIP-712 `Claim(transferId, recipient)`. The contract pays the address inside the signature, so the relayer, or anyone copying the transaction, cannot change where the money goes. |
+| A signature cannot be reused | Each signature covers one transfer id, and the EIP-712 domain binds it to this chain and this escrow address. A transfer can be claimed or cancelled only once. |
+| The sender stays in control | Until a link is collected, its sender (and only its sender) can cancel it and get the full amount back. |
+| A leaked relayer key cannot touch user funds | The relayer only pays gas. With its key an attacker could spend its MON, mint worthless testnet dollars and update the testnet rate feed, but could not move money held in the escrow. |
+| No passwords or seed phrases | Passkey accounts are derived from the device's passkey (WebAuthn PRF) and nothing secret is stored. Google and email accounts use Privy embedded wallets. |
+
+The contracts are source-verified, the code is open, and `test/` covers front-running, replay, signature malleability, expiry, cancellation and fuzzed amounts. The escrow is also exercised against Agora's real AUSD on a mainnet fork.
+
+### Known limits
+
+These matter before Anvay handles real money:
+
+- **A link is a bearer instrument.** Whoever opens it first can collect it, so a forwarded chat or a shared phone puts it at risk. The sender can cancel an uncollected link. Planned: an optional PIN shared separately, or links locked to a phone number or email.
+- **The web app is a trust point.** If the site were compromised, malicious code could read link keys or a passkey account's key while a page is open, as with any web wallet. Today: open source, deploys only from this repository, keys stay in memory. Planned: a strict Content Security Policy, signed releases and an IPFS-pinned build.
+- **No external audit yet.** The escrow is about 120 lines and fully tested, but tests are not an audit.
+- **Third parties:** AUSD depends on Agora (which can freeze addresses and must keep it backed). Google and email accounts depend on Privy. Monad is a young network.
+- **The rupee rate on testnet** is written by the Chainlink CRE workflow run in simulation (`cre workflow simulate --broadcast`), not by a deployed Chainlink DON. It only affects displayed rupee amounts and rupee-to-dollar conversion before the sender confirms. Payments are always in dollars.
+- **Regulation.** Sending money from abroad to India falls under FEMA and RBI rules, and paying out rupees to a bank account needs a licensed partner. Anvay is a working prototype on testnet, not a licensed remittance service.
+
 ## Contracts
 
 All contracts are source-verified on MonadVision (Sourcify).
@@ -153,5 +182,7 @@ Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Chainlink CRE · En
 
 - **Cashing out to a bank account in rupees** needs a licensed off-ramp partner. Today the recipient holds dollars (AUSD) in Anvay. Rupee amounts are shown as estimates at the live rate.
 - **Sender gas:** on testnet a faucet tops up new users. On mainnet the plan is Privy's native gas sponsorship.
-- **Sent links:** passkey accounts rebuild them from the passkey on any device. Email/phone accounts still keep them on the device that created them.
+- **Sent links:** passkey accounts rebuild them from the passkey on any device. Google and email accounts still keep them on the device that created them.
+- **Phone sign-in** works for US and Canadian numbers only (Privy's free plan). People in India sign in with a passkey, Google or email.
+- See [Security model and known limits](#security-model-and-known-limits) for what must change before real money.
 - Rate limits and the relayer's nonce lock are in-memory. This is fine for a single instance, and a shared store comes before scaling out.
