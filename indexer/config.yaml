@@ -8,7 +8,8 @@ chains:
   contracts:
   - name: ClaimLinkEscrow
     address:
-    - "0x607B0075fd9602820AA9Ef4395D7b32657a10cDa"
+    - "0x607B0075fd9602820AA9Ef4395D7b32657a10cDa" # v1, 6 Oct 2026: stand-in MockAUSD
+    - "0xD4581b315B7fB8A1C446d3dEfE7D3112Ddb52138" # v2, 8 Oct 2026: Agora's testnet AUSD
     events:
     - event: Deposited(uint256 indexed id, address indexed sender, address indexed claimKey, uint96 amount, uint64 expiresAt)
     - event: Claimed(uint256 indexed id, address indexed recipient, address relayer, uint96 amount)

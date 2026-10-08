@@ -1,6 +1,8 @@
 """A payment link: one escrow transfer and its current state."""
 type Transfer {
-  id: ID! # escrow transfer id
+  id: ID! # "<escrow address>-<transfer id>"
+  escrow: String! @index # lowercase escrow address
+  transferId: BigInt! # the escrow's own transfer id
   sender: String! @index # lowercase
   claimKey: String! # lowercase address of the link key
   amount: BigInt! # AUSD, 6 decimals
@@ -23,7 +25,7 @@ type Account {
   amountCollected: BigInt!
 }
 
-"""Global totals. Single row with id "global"."""
+"""Totals. Row "global" covers every escrow; one row per escrow address (lowercase) covers that escrow."""
 type Stats {
   id: ID!
   links: Int!

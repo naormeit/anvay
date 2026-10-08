@@ -1,25 +1,20 @@
-import { isAddress, parseEther, parseUnits, type Address } from "viem";
+import { isAddress, parseUnits, type Address } from "viem";
 import { AUSD_ADDRESS, AUSD_DECIMALS, isMainnet, publicClient } from "@/lib/config";
-import { ausdAbi } from "@/lib/contracts";
+import { AGORA_TESTNET_FAUCET, agoraFaucetAbi, ausdAbi } from "@/lib/contracts";
+import { topUpGas } from "@/lib/gas";
 import { relayerClient, withRelayerLock } from "@/lib/relayer";
 
 const TEST_DOLLARS = parseUnits("100", AUSD_DECIMALS);
-const GAS_TOP_UP = parseEther("0.1");
-const MIN_GAS_BALANCE = parseEther("0.05");
+// Refill the relayer's AUSD stock from Agora's faucet (10,000 per request) when it falls below this.
+const REFILL_BELOW = parseUnits("1000", AUSD_DECIMALS);
 const COOLDOWN_MS = 10 * 60 * 1000;
-const FRESH_FUNDS_DELAY_MS = 1500;
-
-const RESERVE_LAG_BLOCKS = BigInt(4);
 
 const lastDrip = new Map<string, number>();
 
-async function waitForBlock(target: bigint) {
-  while ((await publicClient.getBlockNumber({ cacheTime: 0 })) < target) {
-    await new Promise((r) => setTimeout(r, 300));
-  }
-}
-
-/** Testnet only: give a new user 100 test dollars and enough MON to pay for sending. */
+/**
+ * Testnet only: give a new user 100 test dollars (Agora's testnet AUSD, from the relayer's stock) and enough MON to
+ * pay for sending.
+ */
 export async function POST(request: Request) {
   if (isMainnet) return Response.json({ error: "Not available." }, { status: 404 });
 
@@ -39,31 +34,46 @@ export async function POST(request: Request) {
   try {
     await withRelayerLock(async () => {
       const wallet = relayerClient();
-      const mint = await wallet.writeContract({
+      const relayer = wallet.account.address;
+      let stock = await publicClient.readContract({
         address: AUSD_ADDRESS,
         abi: ausdAbi,
-        functionName: "mint",
+        functionName: "balanceOf",
+        args: [relayer],
+      });
+      if (stock < REFILL_BELOW) {
+        // Agora's faucet allows one request every few minutes across all callers, so this can fail; carry on with
+        // the stock we have if it does.
+        try {
+          const refill = await wallet.writeContract({
+            address: AGORA_TESTNET_FAUCET,
+            abi: agoraFaucetAbi,
+            functionName: "requestFunds",
+            args: [relayer],
+          });
+          await publicClient.waitForTransactionReceipt({ hash: refill });
+          stock = await publicClient.readContract({
+            address: AUSD_ADDRESS,
+            abi: ausdAbi,
+            functionName: "balanceOf",
+            args: [relayer],
+          });
+        } catch (err) {
+          console.warn("AUSD refill from Agora's faucet failed", err);
+        }
+      }
+      if (stock < TEST_DOLLARS) throw new Error("test dollar stock is empty");
+
+      const send = await wallet.writeContract({
+        address: AUSD_ADDRESS,
+        abi: ausdAbi,
+        functionName: "transfer",
         args: [address as Address, TEST_DOLLARS],
       });
-      const minted = await publicClient.waitForTransactionReceipt({ hash: mint });
+      const sent = await publicClient.waitForTransactionReceipt({ hash: send });
+      if (sent.status !== "success") throw new Error(`test dollar transfer reverted: ${send}`);
 
-      const gas = await publicClient.getBalance({ address: address as Address });
-      if (gas < MIN_GAS_BALANCE) {
-        // The relayer holds less than Monad's reserve balance, so a MON transfer from it only succeeds as an
-        // "emptying" transaction: one sent when the relayer has had no transaction in the previous 3 blocks. Wait for
-        // that, and check the receipt, since a too-early transfer is mined but reverts.
-        let lastBlock = minted.blockNumber;
-        for (let attempt = 0; ; attempt++) {
-          await waitForBlock(lastBlock + RESERVE_LAG_BLOCKS);
-          const topUp = await wallet.sendTransaction({ to: address as Address, value: GAS_TOP_UP });
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: topUp });
-          if (receipt.status === "success") break;
-          if (attempt >= 2) throw new Error(`gas top-up reverted: ${topUp}`);
-          lastBlock = receipt.blockNumber;
-        }
-        // Monad checks gas against state from 3 blocks back, so freshly received MON is usable ~1.2s later.
-        await new Promise((r) => setTimeout(r, FRESH_FUNDS_DELAY_MS));
-      }
+      await topUpGas(address as Address, sent.blockNumber);
     });
     return Response.json({ ok: true });
   } catch (err) {

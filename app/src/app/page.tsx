@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AssistantCard } from "@/components/AssistantCard";
 import { BalanceCard } from "@/components/BalanceCard";
+import { CashOutCard } from "@/components/CashOutCard";
 import { SendCard } from "@/components/SendCard";
 import { SentList } from "@/components/SentList";
 import { InstallApp } from "@/components/InstallApp";
@@ -48,6 +49,9 @@ export default function Home() {
       <BalanceCard address={address} balance={balance} inrPerUsd={inrPerUsd} onChange={refresh} />
       <AssistantCard balance={balance} inrPerUsd={inrPerUsd} onSent={onSent} />
       <SendCard balance={balance} inrPerUsd={inrPerUsd} onSent={onSent} />
+      <div id="cash-out" className="scroll-mt-4">
+        <CashOutCard address={address} balance={balance} onChange={refresh} />
+      </div>
       <SentList key={`${address}:${sentCount}`} onChange={refresh} limit={5} />
       <InstallApp />
     </Shell>

@@ -4,7 +4,7 @@
 
 Built on [Monad](https://monad.xyz) for the Metropolis hackathon (Track 2: Consumer Products & Payments).
 
-- **Live app:** https://anvay-pay.vercel.app (testnet; use "Add $100 test dollars" to try it). It installs as a mobile app: "Install Anvay" on Android, or Share → Add to Home Screen on iPhone.
+- **Live app:** https://anvay-pay.vercel.app (testnet with Agora's real testnet AUSD; use "Add $100 test dollars" to try it). It installs as a mobile app: "Install Anvay" on Android, or Share → Add to Home Screen on iPhone.
 - **Network:** Monad testnet (chain 10143). The same contracts are tested against Agora's real AUSD on a mainnet fork (see [Mainnet readiness](#mainnet-readiness)).
 
 ## Why
@@ -16,6 +16,8 @@ India receives more remittances than any other country. Sending money home today
 3. **Share it** on WhatsApp. The recipient opens it, signs in with a passkey, Google or email, and taps **Collect**. They need no gas, no wallet and no app.
 
 Unclaimed money can be cancelled and returned at any time.
+
+4. **Cash out.** The recipient can swap their dollars 1:1 for USDC through **Agora's Instant Settlement** pool: a fixed price, no slippage, one tap. USDC is what most exchanges and cash-out services in India accept. Paying rupees straight into a bank account (UPI) is the next step and needs a licensed partner.
 
 ## How it works
 
@@ -129,11 +131,18 @@ All contracts are source-verified on MonadVision (Sourcify).
 
 | Contract | Testnet address |
 | --- | --- |
-| `ClaimLinkEscrow` | [`0x607B0075fd9602820AA9Ef4395D7b32657a10cDa`](https://testnet.monadvision.com/address/0x607B0075fd9602820AA9Ef4395D7b32657a10cDa) |
-| `MockAUSD` (6 decimals, testnet only) | [`0x73E297c20cdee9291D09A66563C78939E5CA9aB5`](https://testnet.monadvision.com/address/0x73E297c20cdee9291D09A66563C78939E5CA9aB5) |
+| `ClaimLinkEscrow` (live, holds Agora's testnet AUSD) | [`0xD4581b315B7fB8A1C446d3dEfE7D3112Ddb52138`](https://testnet.monadvision.com/address/0xD4581b315B7fB8A1C446d3dEfE7D3112Ddb52138) |
+| AUSD (Agora, testnet) | [`0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC`](https://testnet.monadvision.com/address/0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC) |
+| Instant Settlement CTK/AUSD pair (Agora, testnet) | [`0x1Aa8958Aa34cEC8096EF4381cb335effe977b0ae`](https://testnet.monadvision.com/address/0x1Aa8958Aa34cEC8096EF4381cb335effe977b0ae) |
+| `ClaimLinkEscrow` v1 (6–7 Oct, stand-in token; still indexed for stats) | [`0x607B0075fd9602820AA9Ef4395D7b32657a10cDa`](https://testnet.monadvision.com/address/0x607B0075fd9602820AA9Ef4395D7b32657a10cDa) |
+| `MockAUSD` (v1 stand-in, 6 decimals) | [`0x73E297c20cdee9291D09A66563C78939E5CA9aB5`](https://testnet.monadvision.com/address/0x73E297c20cdee9291D09A66563C78939E5CA9aB5) |
 | `InrRateFeed` (Chainlink CRE consumer) | [`0x12cC9B5656F7593C2FeF04964D35752d7e3dc60F`](https://testnet.monadvision.com/address/0x12cC9B5656F7593C2FeF04964D35752d7e3dc60F) |
 
-On mainnet (chain 143) the escrow uses Agora's AUSD at `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`. [`script/DeployEscrow.s.sol`](script/DeployEscrow.s.sol) picks the right token for the chain.
+On mainnet (chain 143) the escrow uses Agora's AUSD at `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`, and cash-out uses the AUSD/USDC Instant Settlement pair `0xf33286E3222D1c829dACeac48c0Ec651F6452470` (which needs Agora KYC). [`script/DeployEscrow.s.sol`](script/DeployEscrow.s.sol) picks the right token for the chain.
+
+### Cash-out: Agora Instant Settlement
+
+[`CashOutCard`](app/src/components/CashOutCard.tsx) swaps AUSD for the pair's other stablecoin with `swapExactTokensForTokens` on Agora's `AgoraStableSwapPair`, from the user's own wallet. On testnet the pair is AUSD/CTK (Agora's stand-in for USDC) and a wallet whitelists itself through Agora's testnet whitelister; on mainnet the pair is AUSD/USDC and whitelisting is Agora's KYC. Recipients hold no MON after a gasless collect, so on testnet `/api/gas` gives a wallet that holds AUSD a little MON first. [`script/e2e-testnet-ausd-fork.sh`](script/e2e-testnet-ausd-fork.sh) rehearses deploy, deposit, blocked redirect, claim, cancel and the swap against Agora's real contracts on a fork, and `app/scripts/passkey-flow.mjs` runs the whole thing in a browser on testnet.
 
 ## Mainnet readiness
 
@@ -152,7 +161,7 @@ src/InrRateFeed.sol          Chainlink CRE consumer holding the USD->INR rate
 test/                        35 Foundry tests incl. front-running, replay, malleability, fuzz, forwarder checks
 cre/inr-rate/                Chainlink CRE workflow (TypeScript) writing the rate on-chain
 indexer/                     Envio HyperIndex indexer for the escrow and the rate feed
-script/                      deploy script, testnet-fork and mainnet-fork (real AUSD) end-to-end checks
+script/                      deploy script; fork end-to-end checks with Agora's real AUSD (testnet, incl. Instant Settlement, and mainnet)
 app/                         Next.js app (Privy login, send, claim, relayer, assistant)
 app/scripts/                 API tests against a local fork and a fake/real Qwen
 ```
@@ -180,7 +189,7 @@ Monad · Solidity + Foundry · OpenZeppelin · Agora AUSD · Chainlink CRE · En
 
 ## Limitations and next steps
 
-- **Cashing out to a bank account in rupees** needs a licensed off-ramp partner. Today the recipient holds dollars (AUSD) in Anvay. Rupee amounts are shown as estimates at the live rate.
+- **Cashing out to a bank account in rupees** needs a licensed off-ramp partner. Today the recipient can hold AUSD or swap it 1:1 for USDC through Agora's Instant Settlement. Rupee amounts are shown as estimates at the live rate.
 - **Sender gas:** on testnet a faucet tops up new users. On mainnet the plan is Privy's native gas sponsorship.
 - **Sent links:** passkey accounts rebuild them from the passkey on any device. Google and email accounts still keep them on the device that created them.
 - **Phone sign-in** works for US and Canadian numbers only (Privy's free plan). People in India sign in with a passkey, Google or email.

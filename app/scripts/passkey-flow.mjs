@@ -86,6 +86,13 @@ await recipient.page.getByRole("button", { name: /Collect \$5\.00/ }).click();
 await recipient.page.getByText("Collected", { exact: true }).waitFor({ timeout: 90000 });
 ok("recipient collected $5.00 (gas paid by relayer)");
 
+step("recipient cashes out through Agora Instant Settlement");
+// In-app navigation keeps the passkey session (a full reload would sign out).
+await recipient.page.getByRole("link", { name: "Cash out" }).click();
+await recipient.page.getByRole("button", { name: "Cash out all" }).click({ timeout: 30000 });
+await recipient.page.getByText("Cashed out $5.00").waitFor({ timeout: 120000 });
+ok("recipient swapped $5.00 AUSD 1:1 through the Instant Settlement pair (gas topped up for them)");
+
 step("sender sees the link as collected");
 await sender.page.getByRole("button", { name: "Refresh" }).click();
 await sender.page.getByText("Collected").first().waitFor({ timeout: 30000 });

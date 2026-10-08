@@ -4,11 +4,15 @@ import { useState } from "react";
 import { useAccount } from "@/lib/account";
 import { Button, Notice } from "./ui";
 
-/** Email/phone (Privy) or passkey (Mera) sign-in. */
+/**
+ * Passkey (Mera) sign-in first. Google, email or phone (Privy) sits behind "Other ways to sign in", and opens by
+ * itself when a passkey fails, for devices whose passkeys can't create an Anvay account.
+ */
 export function SignIn({ emailLabel = "Continue with Google or email" }: { emailLabel?: string }) {
   const { loginWithEmail, loginWithPasskey, hasUsedPasskey } = useAccount();
   const [busy, setBusy] = useState<"create" | "signin" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showOther, setShowOther] = useState(false);
 
   async function passkey(mode: "create" | "signin") {
     setBusy(mode);
@@ -17,6 +21,7 @@ export function SignIn({ emailLabel = "Continue with Google or email" }: { email
       await loginWithPasskey(mode);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Passkey sign-in failed.");
+      setShowOther(true);
     } finally {
       setBusy(null);
     }
@@ -34,9 +39,6 @@ export function SignIn({ emailLabel = "Continue with Google or email" }: { email
             ? "Sign in with your passkey"
             : "Create an account with a passkey"}
       </Button>
-      <Button variant="secondary" onClick={loginWithEmail} disabled={busy !== null}>
-        {emailLabel}
-      </Button>
       <button
         onClick={() => passkey(secondaryMode)}
         disabled={busy !== null}
@@ -49,6 +51,18 @@ export function SignIn({ emailLabel = "Continue with Google or email" }: { email
             : "I already have an Anvay passkey"}
       </button>
       {error && <Notice tone="danger">{error}</Notice>}
+      {showOther ? (
+        <Button variant="secondary" onClick={loginWithEmail} disabled={busy !== null}>
+          {emailLabel}
+        </Button>
+      ) : (
+        <button
+          onClick={() => setShowOther(true)}
+          className="rounded-lg py-1 text-xs text-muted underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Other ways to sign in
+        </button>
+      )}
       <p className="text-xs text-muted">
         A passkey is your fingerprint, face or screen lock. Nothing to remember, and it works on your other devices
         too. Phone number sign-in works for US and Canadian numbers only; in India, use a passkey, Google or email.

@@ -77,6 +77,12 @@ export default function ClaimPage() {
           <Link href="/" className="grid h-11 place-items-center rounded-xl bg-accent text-sm font-medium text-accent-foreground">
             See my balance
           </Link>
+          <Link
+            href="/#cash-out"
+            className="grid h-11 place-items-center rounded-xl border border-border bg-card text-sm font-medium hover:bg-background"
+          >
+            Cash out
+          </Link>
           <a href={explorerTx(done.hash)} target="_blank" rel="noopener noreferrer" className="text-xs text-muted underline">
             Receipt
           </a>

@@ -1,4 +1,5 @@
 import type { Hex } from "viem";
+import { ESCROW_ADDRESS } from "./config";
 
 /**
  * Links the sender created, kept on their device so they can re-share or cancel them.
@@ -11,13 +12,16 @@ export type SentLink = {
   note: string;
   depositHash: Hex;
   createdAt: number;
+  /** Escrow the link was created in. Links from an earlier escrow deployment (no value) are not shown. */
+  escrow?: string;
 };
 
 const storageKey = (owner: string) => `anvay:sent:${owner.toLowerCase()}`;
 
 export function loadSentLinks(owner: string): SentLink[] {
   try {
-    return JSON.parse(localStorage.getItem(storageKey(owner)) ?? "[]") as SentLink[];
+    const all = JSON.parse(localStorage.getItem(storageKey(owner)) ?? "[]") as SentLink[];
+    return all.filter((l) => l.escrow?.toLowerCase() === ESCROW_ADDRESS.toLowerCase());
   } catch {
     return [];
   }
@@ -25,8 +29,9 @@ export function loadSentLinks(owner: string): SentLink[] {
 
 export function saveSentLink(owner: string, link: SentLink) {
   try {
-    const others = loadSentLinks(owner).filter((l) => l.depositHash !== link.depositHash);
-    localStorage.setItem(storageKey(owner), JSON.stringify([link, ...others]));
+    const all = JSON.parse(localStorage.getItem(storageKey(owner)) ?? "[]") as SentLink[];
+    const others = all.filter((l) => l.depositHash !== link.depositHash);
+    localStorage.setItem(storageKey(owner), JSON.stringify([{ ...link, escrow: ESCROW_ADDRESS }, ...others]));
   } catch {
     // Storage can be unavailable (private mode). The link is still shown on screen to copy.
   }

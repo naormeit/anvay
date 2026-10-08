@@ -3,6 +3,8 @@
  * serves them over GraphQL. Everything that uses it has an on-chain fallback, so the app works without it.
  */
 
+import { ESCROW_ADDRESS } from "./config";
+
 export const indexerUrl = process.env.NEXT_PUBLIC_ENVIO_GRAPHQL_URL || "";
 
 export type Activity = { id: string; amount: string; status: "pending" | "claimed" | "cancelled"; at: number };
@@ -122,23 +124,33 @@ export async function indexerStats(excludedSenders: readonly string[] = []): Pro
 }
 
 /**
- * Every transfer an address has sent, newest first, plus the highest transfer id the indexer has seen overall.
- * Callers read anything newer than `latestIndexedId` from the chain, since the indexer can lag by a few seconds.
+ * Every transfer an address has sent through the current escrow, newest first, plus the highest transfer id the
+ * indexer has seen in that escrow. Callers read anything newer than `latestIndexedId` from the chain, since the
+ * indexer can lag by a few seconds. (The indexer also covers earlier escrow deployments, for the public stats.)
  */
 export async function indexerTransfersBySender(
   sender: string,
 ): Promise<{ transfers: IndexedTransfer[]; latestIndexedId: bigint }> {
-  const data = await gql<{ mine: IndexedTransfer[]; stats: { links: number }[] }>(
-    `query BySender($sender: String!) {
-      mine: Transfer(where: { sender: { _eq: $sender } }, order_by: { createdAt: desc }) {
-        id sender claimKey amount expiresAt status createdAt
+  const escrow = ESCROW_ADDRESS.toLowerCase();
+  const data = await gql<{ mine: (IndexedTransfer & { transferId: string })[]; stats: { links: number }[] }>(
+    `query BySender($sender: String!, $escrow: String!) {
+      mine: Transfer(
+        where: { sender: { _eq: $sender }, escrow: { _eq: $escrow } }
+        order_by: { createdAt: desc }
+      ) {
+        transferId sender claimKey amount expiresAt status createdAt
       }
-      stats: Stats(where: { id: { _eq: "global" } }) { links }
+      stats: Stats(where: { id: { _eq: $escrow } }) { links }
     }`,
-    { sender: sender.toLowerCase() },
+    { sender: sender.toLowerCase(), escrow },
   );
   return {
-    transfers: data.mine.map((t) => ({ ...t, amount: String(t.amount), expiresAt: String(t.expiresAt) })),
+    transfers: data.mine.map(({ transferId, ...t }) => ({
+      ...t,
+      id: String(transferId),
+      amount: String(t.amount),
+      expiresAt: String(t.expiresAt),
+    })),
     // Escrow ids count up from 1, so the number of indexed deposits is the highest indexed id.
     latestIndexedId: BigInt(data.stats[0]?.links ?? 0),
   };

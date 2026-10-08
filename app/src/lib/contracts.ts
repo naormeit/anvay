@@ -20,8 +20,12 @@ export const ausdAbi = parseAbi([
   "function balanceOf(address) view returns (uint256)",
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
-  "function mint(address to, uint256 amount)",
+  "function transfer(address to, uint256 amount) returns (bool)",
 ]);
+
+/** Agora's public AUSD faucet on testnets: 10,000 AUSD per request, with a short global cooldown. */
+export const AGORA_TESTNET_FAUCET = "0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C" as const;
+export const agoraFaucetAbi = parseAbi(["function requestFunds(address to)"]);
 
 /** Mirrors ClaimLinkEscrow.Status. */
 export const TransferStatus = { None: 0, Pending: 1, Claimed: 2, Cancelled: 3 } as const;

@@ -11,6 +11,8 @@ export const TEST_SENDERS: readonly string[] = [
   "0x04df27948cb1adc000adb953eba870874471b4ef", // passkey e2e after the redesign, 7 Oct 2026 (transfer #7)
   "0xd7585d2ca8739a9495d4a1d612b493e2dc7b339c", // passkey e2e for the faucet fix, 7 Oct 2026 (transfer #8)
   "0xee679bad8469d898aa208d1fa79a89b1b8d39e97", // passkey e2e for the account and activity pages, 7 Oct 2026 (transfer #11)
+  "0xa16636479f1653d6134ccb07197d5d0964176a82", // passkey e2e, cash-out rehearsal, 8 Oct 2026 (escrow v2 #1)
+  "0x5419d7336f9171e595991785ca9074036444e812", // passkey e2e with Instant Settlement cash-out, 8 Oct 2026 (escrow v2 #2)
 ];
 
 export const isTestSender = (address: string) => TEST_SENDERS.includes(address.toLowerCase());

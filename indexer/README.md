@@ -4,8 +4,10 @@ Indexes Anvay's contracts on Monad testnet through HyperSync:
 
 | Contract | Events | Entities |
 | --- | --- | --- |
-| `ClaimLinkEscrow` `0x607B…0cDa` | `Deposited`, `Claimed`, `Cancelled` | `Transfer`, `Account`, `Stats` |
+| `ClaimLinkEscrow` `0xD458…2138` (live, Agora AUSD) and `0x607B…0cDa` (v1) | `Deposited`, `Claimed`, `Cancelled` | `Transfer`, `Account`, `Stats` |
 | `InrRateFeed` `0x12cC…c60F` | `RateUpdated` (written by the Chainlink CRE workflow) | `RateUpdate` |
+
+Each escrow numbers its transfers from 1, so a `Transfer` id is `<escrow>-<transferId>`, with `escrow` and `transferId` as fields. `Stats` has a `global` row plus one row per escrow address.
 
 The app reads the GraphQL endpoint (`NEXT_PUBLIC_ENVIO_GRAPHQL_URL`) for the public `/stats` page and to find a passkey account's transfers. Without it, the app reads the contract directly.
 
@@ -29,6 +31,6 @@ Example query:
 ```graphql
 {
   Stats(where: { id: { _eq: "global" } }) { links collected volume senders recipients }
-  Transfer(order_by: { createdAt: desc }, limit: 5) { id amount status createdAt }
+  Transfer(order_by: { createdAt: desc }, limit: 5) { escrow transferId amount status createdAt }
 }
 ```

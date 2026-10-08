@@ -1,14 +1,15 @@
 /*
- * Anvay escrow handlers: keep each payment link's current state plus per-account and global totals.
- * Addresses are stored lowercase so the app can query them without caring about checksums.
+ * Anvay escrow handlers: keep each payment link's current state plus per-account, per-escrow and global totals.
+ * Several escrow deployments are indexed, and each numbers its transfers from 1, so a Transfer's id is
+ * "<escrow>-<transferId>". Addresses are stored lowercase so the app can query them without caring about checksums.
  */
 import { indexer } from "envio";
 import type { Account, Stats } from "envio";
 
 const STATS_ID = "global";
 
-const emptyStats = (): Stats => ({
-  id: STATS_ID,
+const emptyStats = (id: string): Stats => ({
+  id,
   links: 0,
   collected: 0,
   cancelled: 0,
@@ -27,13 +28,29 @@ const emptyAccount = (id: string): Account => ({
   amountCollected: 0n,
 });
 
+const transferKey = (escrow: string, id: bigint) => `${escrow.toLowerCase()}-${id}`;
+
+/** Apply the same change to the global totals and to this escrow's totals. */
+async function updateStats(
+  context: { Stats: { get: (id: string) => Promise<Stats | undefined>; set: (s: Stats) => void } },
+  escrow: string,
+  change: (s: Stats) => Partial<Stats>,
+) {
+  for (const id of [STATS_ID, escrow.toLowerCase()]) {
+    const stats = (await context.Stats.get(id)) ?? emptyStats(id);
+    context.Stats.set({ ...stats, ...change(stats) });
+  }
+}
+
 indexer.onEvent({ contract: "ClaimLinkEscrow", event: "Deposited" }, async ({ event, context }) => {
   const sender = event.params.sender.toLowerCase();
   const amount = event.params.amount;
   const at = event.block.timestamp;
 
   context.Transfer.set({
-    id: event.params.id.toString(),
+    id: transferKey(event.srcAddress, event.params.id),
+    escrow: event.srcAddress.toLowerCase(),
+    transferId: event.params.id,
     sender,
     claimKey: event.params.claimKey.toLowerCase(),
     amount,
@@ -50,14 +67,14 @@ indexer.onEvent({ contract: "ClaimLinkEscrow", event: "Deposited" }, async ({ ev
   const account = (await context.Account.get(sender)) ?? emptyAccount(sender);
   context.Account.set({ ...account, linksSent: account.linksSent + 1, amountSent: account.amountSent + amount });
 
-  const stats = (await context.Stats.get(STATS_ID)) ?? emptyStats();
-  context.Stats.set({
-    ...stats,
+  // `senders` and `recipients` count first-time accounts across all escrows; the app reads only `links` from the
+  // per-escrow rows.
+  await updateStats(context, event.srcAddress, (stats) => ({
     links: stats.links + 1,
     volume: stats.volume + amount,
     senders: stats.senders + (account.linksSent === 0 ? 1 : 0),
     lastActivity: at,
-  });
+  }));
 });
 
 indexer.onEvent({ contract: "ClaimLinkEscrow", event: "Claimed" }, async ({ event, context }) => {
@@ -65,7 +82,7 @@ indexer.onEvent({ contract: "ClaimLinkEscrow", event: "Claimed" }, async ({ even
   const amount = event.params.amount;
   const at = event.block.timestamp;
 
-  const transfer = await context.Transfer.get(event.params.id.toString());
+  const transfer = await context.Transfer.get(transferKey(event.srcAddress, event.params.id));
   if (transfer) {
     context.Transfer.set({
       ...transfer,
@@ -84,24 +101,21 @@ indexer.onEvent({ contract: "ClaimLinkEscrow", event: "Claimed" }, async ({ even
     amountCollected: account.amountCollected + amount,
   });
 
-  const stats = (await context.Stats.get(STATS_ID)) ?? emptyStats();
-  context.Stats.set({
-    ...stats,
+  await updateStats(context, event.srcAddress, (stats) => ({
     collected: stats.collected + 1,
     collectedVolume: stats.collectedVolume + amount,
     recipients: stats.recipients + (account.linksCollected === 0 ? 1 : 0),
     lastActivity: at,
-  });
+  }));
 });
 
 indexer.onEvent({ contract: "ClaimLinkEscrow", event: "Cancelled" }, async ({ event, context }) => {
   const at = event.block.timestamp;
 
-  const transfer = await context.Transfer.get(event.params.id.toString());
+  const transfer = await context.Transfer.get(transferKey(event.srcAddress, event.params.id));
   if (transfer) {
     context.Transfer.set({ ...transfer, status: "cancelled", settledAt: at, settledTx: event.transaction.hash });
   }
 
-  const stats = (await context.Stats.get(STATS_ID)) ?? emptyStats();
-  context.Stats.set({ ...stats, cancelled: stats.cancelled + 1, lastActivity: at });
+  await updateStats(context, event.srcAddress, (stats) => ({ cancelled: stats.cancelled + 1, lastActivity: at }));
 });
