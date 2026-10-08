@@ -1,23 +1,57 @@
+<div align="center">
+
+<img src="app/public/icons/icon-192.png" width="76" alt="" />
+
 # Anvay
 
-**Send dollars home with a link.** Type an amount, share the link on WhatsApp, and your family taps to collect it in seconds. No bank details, no app to install, and almost no fees.
+**Send dollars home with a link.**
 
-Built on [Monad](https://monad.xyz) for the Metropolis hackathon (Track 2: Consumer Products & Payments).
+Type an amount, share the link on WhatsApp, and your family taps to collect it in seconds.<br />
+No bank details, no app to install, no fees for them.
 
-- **Live app:** https://anvay-pay.vercel.app (testnet with Agora's real testnet AUSD; use "Add $100 test dollars" to try it). It installs as a mobile app: "Install Anvay" on Android, or Share → Add to Home Screen on iPhone.
-- **Network:** Monad testnet (chain 10143). The same contracts are tested against Agora's real AUSD on a mainnet fork (see [Mainnet readiness](#mainnet-readiness)).
+[**Try it live**](https://anvay-pay.vercel.app) · [Live stats](https://anvay-pay.vercel.app/stats) · [How it works](#how-it-works) · [Security](#security-model-and-known-limits)
+
+<br />
+
+<img src="media/anvay-flow.jpg" alt="Anvay on a phone: type 'Papa ko 2 hazaar bhej do', share the link, Papa opens it and collects $20.68, then cashes out 1:1 through Agora Instant Settlement" width="100%" />
+
+</div>
+
+Built on [Monad](https://monad.xyz) for the Metropolis hackathon, Track 2: Consumer Products & Payments. The live app runs on Monad testnet with Agora's real testnet AUSD.
+
+## Try it in a minute
+
+1. Open **[anvay-pay.vercel.app](https://anvay-pay.vercel.app)** on your phone and tap **Create an account with a passkey**.
+2. Tap **Add $100 test dollars**. It's free test money.
+3. In **Just say it**, type *Papa ko 2 hazaar bhej do*, tap **Confirm**, and share the link with a friend.
+4. Your friend opens it, uses their fingerprint and taps **Collect**. Then they can tap **Cash out**.
+
+It installs like an app: **Install Anvay** on Android, or Share → Add to Home Screen on iPhone.
 
 ## Why
 
 India receives more remittances than any other country. Sending money home today means bank forms, transfer fees, poor exchange rates and waits of hours or days. Anvay makes it as simple as sending a message:
 
-1. **Sign in** with a passkey (fingerprint, face or screen lock), Google or email. Anvay creates the account in the background. No seed phrases and no crypto words anywhere in the app.
+1. **Sign in** with a passkey (fingerprint, face or screen lock). Google and email work too. No seed phrases and no crypto words anywhere in the app.
 2. **Create a link** for any amount in dollars or rupees, or just type *"Send ₹5,000 to Mom"* or *"Papa ko 2 hazaar bhej do"*.
-3. **Share it** on WhatsApp. The recipient opens it, signs in with a passkey, Google or email, and taps **Collect**. They need no gas, no wallet and no app.
-
-Unclaimed money can be cancelled and returned at any time.
-
+3. **Share it** on WhatsApp. The recipient opens it, signs in, and taps **Collect**. They need no gas, no wallet and no app.
 4. **Cash out.** The recipient can swap their dollars 1:1 for USDC through **Agora's Instant Settlement** pool: a fixed price, no slippage, one tap. USDC is what most exchanges and cash-out services in India accept. Paying rupees straight into a bank account (UPI) is the next step and needs a licensed partner.
+
+Until a link is collected, the sender can cancel it and get the money back. And losing your phone loses nothing: signing in with the same passkey on another device rebuilds every link you've sent.
+
+<img src="media/anvay-more.jpg" alt="Fingerprint sign-up with a dollar balance, sent links restored from the passkey after signing in again, and the live stats page" width="100%" />
+
+### What each sponsor does here
+
+| Sponsor | Role in Anvay |
+| --- | --- |
+| **Monad** | Settles every link in about a second, cheaply enough that a $20 transfer makes sense |
+| **Agora AUSD** | The dollar being sent; held by the escrow; **Instant Settlement** cashes it out 1:1 |
+| **Mera** | Passkey accounts: one passkey derives the account key, every link key and a notes key |
+| **Chainlink CRE** | Writes the USD→INR rate on-chain: the median of three sources (run with `cre workflow simulate --broadcast` on testnet) |
+| **Envio** | Indexes both escrows and the rate feed; powers live stats and fast link recovery |
+| **Privy** | Google and email sign-in for devices whose passkeys can't create an account |
+| **Qwen** | The Hinglish assistant that drafts payments; nothing moves until the user confirms |
 
 ## How it works
 
