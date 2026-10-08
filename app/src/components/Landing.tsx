@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { InstallApp } from "@/components/InstallApp";
 import { SignIn } from "@/components/SignIn";
 import {
   ArrowRightIcon,
@@ -350,6 +351,7 @@ export function Landing() {
             >
               Create your account <ArrowRightIcon className="h-4 w-4" />
             </a>
+            <InstallApp className="mt-4 w-full max-w-sm text-left" />
           </section>
         </main>
 

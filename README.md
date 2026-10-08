@@ -4,7 +4,7 @@
 
 Built on [Monad](https://monad.xyz) for the Metropolis hackathon (Track 2: Consumer Products & Payments).
 
-- **Live app:** https://anvay-pay.vercel.app (testnet; use "Add $100 test dollars" to try it)
+- **Live app:** https://anvay-pay.vercel.app (testnet; use "Add $100 test dollars" to try it). It installs as a mobile app: "Install Anvay" on Android, or Share → Add to Home Screen on iPhone.
 - **Network:** Monad testnet (chain 10143). The same contracts are tested against Agora's real AUSD on a mainnet fork (see [Mainnet readiness](#mainnet-readiness)).
 
 ## Why

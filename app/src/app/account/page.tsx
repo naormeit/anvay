@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { BalanceCard } from "@/components/BalanceCard";
+import { InstallApp } from "@/components/InstallApp";
 import { ArrowRightIcon, ChartIcon, CheckIcon, FingerprintIcon, KeyIcon, ShieldIcon } from "@/components/icons";
 import { SignedInOnly } from "@/components/SignedInOnly";
 import { Avatar, Button, Card, CardTitle, GITHUB_URL, Shell } from "@/components/ui";
@@ -119,6 +120,8 @@ function AccountView() {
           </ul>
         )}
       </Card>
+
+      <InstallApp />
 
       <div className="flex flex-col gap-2">
         <Link

@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Anvay",
   description: "Send dollars home with a link. Instant, almost free.",
+  applicationName: "Anvay",
+  appleWebApp: { capable: true, title: "Anvay", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
   openGraph: {
     title: "Anvay",
     description: "Send dollars home with a link. Your family taps to collect it in seconds.",

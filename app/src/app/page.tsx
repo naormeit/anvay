@@ -5,6 +5,7 @@ import { AssistantCard } from "@/components/AssistantCard";
 import { BalanceCard } from "@/components/BalanceCard";
 import { SendCard } from "@/components/SendCard";
 import { SentList } from "@/components/SentList";
+import { InstallApp } from "@/components/InstallApp";
 import { Landing } from "@/components/Landing";
 import { Notice, Shell } from "@/components/ui";
 import { useAccount } from "@/lib/account";
@@ -48,6 +49,7 @@ export default function Home() {
       <AssistantCard balance={balance} inrPerUsd={inrPerUsd} onSent={onSent} />
       <SendCard balance={balance} inrPerUsd={inrPerUsd} onSent={onSent} />
       <SentList key={`${address}:${sentCount}`} onChange={refresh} limit={5} />
+      <InstallApp />
     </Shell>
   );
 }
