@@ -15,6 +15,8 @@ export const TEST_SENDERS: readonly string[] = [
   "0x5419d7336f9171e595991785ca9074036444e812", // passkey e2e with Instant Settlement cash-out, 8 Oct 2026 (escrow v2 #2)
   "0x338bfebc11ed79b7f889923c9ad61334e5b14435", // demo video recording, 8 Oct 2026 (escrow v2 #3)
   "0xf4369eeb0aa61d26695f5406c4c98082d337ad0e", // README screenshots, 8 Oct 2026 (escrow v2 #5)
+  "0xe434782afcb78825614d9990605ecafc35eadcfc", // demo video re-recording with the new logo, 9 Oct 2026 (escrow v2 #8)
+  "0xba88d01a8c00d97205a944f84c881400a22be699", // README screenshots with the new logo, 9 Oct 2026 (escrow v2 #9)
 ];
 
 export const isTestSender = (address: string) => TEST_SENDERS.includes(address.toLowerCase());
