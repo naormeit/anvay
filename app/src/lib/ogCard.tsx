@@ -1,4 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
+
+const logo = `data:image/png;base64,${readFileSync(join(process.cwd(), "public/icons/icon-192.png")).toString("base64")}`;
 
 export const ogSize = { width: 1200, height: 630 };
 
@@ -19,22 +23,8 @@ export function ogCard(title: string, subtitle: string) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <div
-            style={{
-              width: 88,
-              height: 88,
-              borderRadius: 20,
-              background: "#c2410c",
-              color: "white",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 56,
-              fontWeight: 700,
-            }}
-          >
-            A
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logo} width={88} height={88} style={{ borderRadius: 20 }} alt="" />
           <div style={{ fontSize: 56, fontWeight: 700 }}>Anvay</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

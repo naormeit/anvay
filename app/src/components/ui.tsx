@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAccount } from "@/lib/account";
@@ -10,7 +11,7 @@ export const GITHUB_URL = "https://github.com/naormeit/anvay";
 export function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-      <span className="hero-gradient grid h-8 w-8 place-items-center rounded-lg text-sm font-bold shadow-soft">A</span>
+      <Image src="/icons/icon-192.png" alt="" width={32} height={32} className="h-8 w-8 rounded-lg shadow-soft" priority />
       Anvay
       {!isMainnet && (
         <span className="rounded-full border border-border px-2 py-0.5 text-xs font-normal text-muted">test mode</span>

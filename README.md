@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="app/public/icons/icon-192.png" width="76" alt="" />
-
-# Anvay
+<img src="media/anvay-logo.png" width="380" alt="Anvay" />
 
 **Send dollars home with a link.**
 
